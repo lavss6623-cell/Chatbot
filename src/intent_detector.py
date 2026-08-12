@@ -38,6 +38,12 @@ class TNEAIntentDetector:
             r"suggest.*college",
             r"best.*college",
             r"college.*should",
+            r"want.*colleges",
+            r"looking for.*colleges",
+            r"looking for.*college",
+            r"need.*colleges",
+            r"need.*college",
+            r"want.*college",
         ]
 
         for pattern in recommendation_patterns:

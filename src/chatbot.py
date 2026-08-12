@@ -7,184 +7,133 @@ from src.conversation import ConversationState
 class TNEAChatbot:
 
     def __init__(self):
-
-        # ------------------------------------------
         # Core components
-        # ------------------------------------------
-
         self.search = TNEASearch()
-
-        self.parser = TNEAQueryParser(
-            self.search
-        )
-
+        self.parser = TNEAQueryParser(self.search)
         self.intent_detector = TNEAIntentDetector()
-
         self.state = ConversationState()
+
+        # Conversation context
+        self.pending_intent = None
+        self.last_intent = None
 
     # ==================================================
     # PROCESS MESSAGE
     # ==================================================
 
     def process_message(self, message):
-
         message = message.strip()
 
         if not message:
             return "Please enter a message."
 
-        # ------------------------------------------
-        # Detect intent
-        # ------------------------------------------
+        detected_intent = self.intent_detector.detect(message)
+        parsed = self.parser.parse(message)
 
-        intent = self.intent_detector.detect(
-            message
-        )
+        # Update state before handling the intent so that
+        # follow-up messages such as "BC" or "ECE" work.
+        self.state.update(parsed)
 
-        # ------------------------------------------
-        # Parse information
-        # ------------------------------------------
+        # Determine intent.
+        if detected_intent != "unknown":
 
-        parsed = self.parser.parse(
-            message
-        )
+            intent = detected_intent
 
-        # ------------------------------------------
-        # Update conversation state
-        # ------------------------------------------
+        elif self.pending_intent is not None:
 
-        self.state.update(
-            parsed
-        )
+            intent = self.pending_intent
 
-        # ------------------------------------------
-        # Recommendation
-        # ------------------------------------------
+        elif self.last_intent == "recommendation" and any(
+            value is not None for value in parsed.values()
+        ):
 
-        if intent == "recommendation":
+            # Continue an existing recommendation conversation.
+            intent = "recommendation"
 
-            return self.handle_recommendation()
+        elif self.last_intent == "cutoff_lookup" and any(
+            value is not None for value in parsed.values()
+        ):
 
-        # ------------------------------------------
-        # Cutoff lookup
-        # ------------------------------------------
+            # Continue an existing cutoff lookup conversation.
+            #
+            # Examples:
+            # "What about MBC?"
+            # "What about BC?"
+            # "What about ECE?"
 
-        elif intent == "cutoff_lookup":
+            intent = "cutoff_lookup"
 
-            return self.handle_cutoff_lookup(
-                parsed
-            )
+        elif any(value is not None for value in parsed.values()):
 
-        # ------------------------------------------
-        # Branch search
-        # ------------------------------------------
+            # If the parser extracted useful information
+            # but no intent was detected, treat it as a
+            # recommendation request.
 
-        elif intent == "branch_search":
-
-            return self.handle_branch_search()
-
-        # ------------------------------------------
-        # College search
-        # ------------------------------------------
-
-        elif intent == "college_search":
-
-            return self.handle_college_search(
-                message
-            )
-
-        # ------------------------------------------
-        # Unknown
-        # ------------------------------------------
+            intent = "recommendation"
 
         else:
 
-            return self.handle_unknown()
+            intent = "unknown"
+
+        self.last_intent = intent
+
+        if intent == "recommendation":
+            return self.handle_recommendation()
+
+        elif intent == "cutoff_lookup":
+            return self.handle_cutoff_lookup(parsed)
+
+        elif intent == "branch_search":
+            return self.handle_branch_search()
+
+        elif intent == "college_search":
+            return self.handle_college_search(message)
+
+        return self.handle_unknown()
 
     # ==================================================
     # RECOMMENDATION
     # ==================================================
 
     def handle_recommendation(self):
+        self.pending_intent = "recommendation"
 
-        missing = (
-            self.state
-            .missing_for_recommendation()
-        )
-
-        # ------------------------------------------
-        # Ask for missing information
-        # ------------------------------------------
+        missing = self.state.missing_for_recommendation()
 
         if missing:
+            return self.ask_for_missing(missing)
 
-            return self.ask_for_missing(
-                missing
-            )
+        cutoff = self.state.get("cutoff")
+        community = self.state.get("community")
+        branch = self.state.get("branch")
 
-        # ------------------------------------------
-        # Get state
-        # ------------------------------------------
-
-        cutoff = self.state.get(
-            "cutoff"
-        )
-
-        community = self.state.get(
-            "community"
-        )
-
-        branch = self.state.get(
-            "branch"
-        )
-
-        # ------------------------------------------
-        # Resolve branch
-        # ------------------------------------------
-
-        resolved_branch = (
-            self.search.resolve_branch(
-                branch
-            )
-        )
+        resolved_branch = self.search.resolve_branch(branch)
 
         if resolved_branch is None:
-
             return (
-                f"I couldn't identify the branch "
-                f"'{branch}'. Please try CSE, ECE, "
-                f"EEE, IT, Mechanical, Civil, etc."
+                f"I couldn't identify the branch '{branch}'. "
+                "Please try CSE, ECE, EEE, IT, Mechanical, Civil, etc."
             )
 
-        # ------------------------------------------
-        # Get recommendations
-        # ------------------------------------------
-
-        recommendations = (
-            self.search.recommend_colleges(
-                cutoff=cutoff,
-                community=community,
-                branch=branch,
-                limit=10
-            )
+        recommendations = self.search.recommend_colleges(
+            cutoff=cutoff,
+            community=community,
+            branch=branch,
+            limit=10,
         )
 
         if recommendations.empty:
+            return "I couldn't find matching 2025 cutoff data " "for this combination."
 
-            return (
-                "I couldn't find matching 2025 "
-                "cutoff data for this combination."
-            )
+        self.pending_intent = None
 
-        # ------------------------------------------
-        # Format response
-        # ------------------------------------------
-
+        # Do not reset state. This allows:
+        # "What about ECE?" to reuse cutoff + community.
         return self.format_response(
             cutoff=cutoff,
             community=community,
             branch=resolved_branch,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     # ==================================================
@@ -192,111 +141,181 @@ class TNEAChatbot:
     # ==================================================
 
     def ask_for_missing(self, missing):
+        field = missing[0]
 
-        # ------------------------------------------
-        # One missing field
-        # ------------------------------------------
+        if field == "cutoff":
+            return "Sure. What is your TNEA cutoff?"
 
-        if len(missing) == 1:
-
-            field = missing[0]
-
-            if field == "cutoff":
-
-                return (
-                    "What is your TNEA cutoff?"
-                )
-
-            if field == "community":
-
-                return (
-                    "What is your community category? "
-                    "For example: OC, BC, BCM, MBC, "
-                    "SC, SCA or ST."
-                )
-
-            if field == "branch":
-
-                return (
-                    "Which branch are you interested in? "
-                    "For example: CSE, ECE, EEE, IT, "
-                    "Mechanical or Civil."
-                )
-
-        # ------------------------------------------
-        # Multiple missing fields
-        # ------------------------------------------
-
-        questions = []
-
-        if "cutoff" in missing:
-            questions.append(
-                "your cutoff"
+        if field == "community":
+            return (
+                "What is your community category? "
+                "For example: OC, BC, BCM, MBC, SC, SCA or ST."
             )
 
-        if "community" in missing:
-            questions.append(
-                "your community category"
+        if field == "branch":
+            return (
+                "Which branch are you interested in? "
+                "For example: CSE, ECE, EEE, IT, Mechanical or Civil."
             )
 
-        if "branch" in missing:
-            questions.append(
-                "your preferred branch"
-            )
-
-        return (
-            "I need a little more information. "
-            "Please provide "
-            + ", ".join(questions)
-            + "."
-        )
+        return "I need some more information to help you."
 
     # ==================================================
     # CUTOFF LOOKUP
     # ==================================================
 
     def handle_cutoff_lookup(self, parsed):
+        """
+        Handle questions such as:
+        - What is the cutoff for CSE?
+        - What is the BC cutoff for CSE?
+        - What about MBC?
 
-        return (
-            "Cutoff lookup is not implemented yet. "
-            "We will connect it to the 2025 dataset next."
+        The parsed argument is accepted because process_message()
+        passes it. State has already been updated before this method.
+        """
+
+        # If the current message supplied a branch, it is already
+        # stored in self.state. Same for community.
+        branch = self.state.get("branch")
+        community = self.state.get("community")
+
+        # --------------------------------------------------
+        # Need branch first
+        # --------------------------------------------------
+        if not branch:
+            self.pending_intent = "cutoff_lookup"
+            return (
+                "Which branch would you like the cutoff for?\n\n"
+                "For example:\n"
+                "• CSE\n"
+                "• ECE\n"
+                "• EEE\n"
+                "• IT\n"
+                "• Mechanical\n"
+                "• Civil"
+            )
+
+        # --------------------------------------------------
+        # Need community next
+        # --------------------------------------------------
+        if not community:
+            self.pending_intent = "cutoff_lookup"
+            return (
+                "Which community cutoff would you like?\n\n"
+                "Available categories:\n"
+                "• OC\n"
+                "• BC\n"
+                "• BCM\n"
+                "• MBC\n"
+                "• SC\n"
+                "• SCA\n"
+                "• ST"
+            )
+
+        # --------------------------------------------------
+        # Resolve branch
+        # --------------------------------------------------
+        resolved_branch = self.search.resolve_branch(branch)
+
+        if resolved_branch is None:
+            self.pending_intent = "cutoff_lookup"
+            return (
+                f"I couldn't identify the branch '{branch}'.\n\n"
+                "Try CSE, ECE, EEE, IT, Mechanical, Civil, "
+                "or another branch from the dataset."
+            )
+
+        # --------------------------------------------------
+        # Resolve community column
+        # --------------------------------------------------
+        community = community.upper().strip()
+        cutoff_column = self.search.community_map.get(community)
+
+        if cutoff_column is None:
+            self.pending_intent = "cutoff_lookup"
+            return (
+                "I couldn't recognize that community.\n\n"
+                "Use OC, BC, BCM, MBC, SC, SCA or ST."
+            )
+
+        # --------------------------------------------------
+        # Search the exact branch
+        # --------------------------------------------------
+        results = self.search.df[self.search.df["branch"] == resolved_branch].copy()
+
+        results = results[results[cutoff_column].notna()].copy()
+
+        if results.empty:
+            self.pending_intent = None
+            return (
+                f"I couldn't find 2025 cutoff data for "
+                f"{resolved_branch} under {community}."
+            )
+
+        # Highest historical cutoff first.
+        results = results.sort_values(
+            by=cutoff_column,
+            ascending=False,
+        ).head(10)
+
+        response = [
+            "TNEA CUTOFF LOOKUP",
+            "================================",
+            "",
+            f"Branch    : {resolved_branch}",
+            f"Community : {community}",
+            "",
+            "TOP 2025 HISTORICAL CUTOFFS",
+            "--------------------------------",
+        ]
+
+        for index, (_, row) in enumerate(
+            results.iterrows(),
+            start=1,
+        ):
+            response.append(f"{index}. {row['college_name']}")
+            response.append(f"   College code: {row['college_code']}")
+            response.append(f"   2025 cutoff : {float(row[cutoff_column]):.1f}")
+            response.append("")
+
+        response.extend(
+            [
+                "IMPORTANT",
+                "--------------------------------",
+                "These are 2025 historical cutoff values, "
+                "not guaranteed cutoffs for the upcoming counselling.",
+            ]
         )
+
+        # Lookup is complete. Keep the state so the user can say
+        # "What about MBC?" or "What about ECE?" next.
+        self.pending_intent = None
+
+        return "\n".join(response)
 
     # ==================================================
     # BRANCH SEARCH
     # ==================================================
 
     def handle_branch_search(self):
+        self.pending_intent = None
+        self.last_intent = "branch_search"
 
         branches = (
-            self.search.df["branch"]
-            .dropna()
-            .drop_duplicates()
-            .sort_values()
-            .tolist()
+            self.search.df["branch"].dropna().drop_duplicates().sort_values().tolist()
         )
 
         if not branches:
-
-            return (
-                "I couldn't find any branches "
-                "in the dataset."
-            )
+            return "I couldn't find any branches in the dataset."
 
         response = [
-            "Here are the branches available "
-            "in the 2025 dataset:",
-            ""
+            "Here are the branches available in the 2025 dataset:",
+            "",
         ]
 
-        for index, branch in enumerate(
-            branches,
-            start=1
-        ):
-
-            response.append(
-                f"{index}. {branch}"
-            )
+        for index, branch in enumerate(branches, start=1):
+            response.append(f"{index}. {branch}")
 
         return "\n".join(response)
 
@@ -305,8 +324,9 @@ class TNEAChatbot:
     # ==================================================
 
     def handle_college_search(self, message):
+        self.pending_intent = None
+        self.last_intent = "college_search"
 
-        # Remove common conversational phrases
         query = message.lower()
 
         phrases = [
@@ -315,54 +335,33 @@ class TNEAChatbot:
             "give me information on",
             "college information about",
             "college details about",
-            "about"
+            "about",
         ]
 
         for phrase in phrases:
-
-            query = query.replace(
-                phrase,
-                ""
-            )
+            query = query.replace(phrase, "")
 
         query = query.strip()
 
         if not query:
+            return "Which college would you like information about?"
 
-            return (
-                "Which college would you like "
-                "information about?"
-            )
-
-        results = self.search.search_college(
-            query
-        )
+        results = self.search.search_college(query)
 
         if results.empty:
-
-            return (
-                f"I couldn't find a college matching "
-                f"'{query}'."
-            )
+            return f"I couldn't find a college matching '{query}'."
 
         response = [
             "I found these colleges:",
-            ""
+            "",
         ]
 
         for index, (_, row) in enumerate(
             results.head(10).iterrows(),
-            start=1
+            start=1,
         ):
-
-            response.append(
-                f"{index}. {row['college_name']}"
-            )
-
-            response.append(
-                f"   College code: "
-                f"{row['college_code']}"
-            )
+            response.append(f"{index}. {row['college_name']}")
+            response.append(f"   College code: {row['college_code']}")
 
         return "\n".join(response)
 
@@ -371,10 +370,9 @@ class TNEAChatbot:
     # ==================================================
 
     def handle_unknown(self):
-
         return (
-            "I can help you with TNEA counselling "
-            "using the 2025 cutoff dataset.\n\n"
+            "I can help you with TNEA counselling using the "
+            "2025 cutoff dataset.\n\n"
             "Try something like:\n"
             "• I got 187 BC and want CSE\n"
             "• Which colleges can I get?\n"
@@ -384,7 +382,7 @@ class TNEAChatbot:
         )
 
     # ==================================================
-    # FORMAT RECOMMENDATION RESPONSE
+    # FORMAT RESPONSE
     # ==================================================
 
     def format_response(
@@ -392,57 +390,82 @@ class TNEAChatbot:
         cutoff,
         community,
         branch,
-        recommendations
+        recommendations,
     ):
-
         response = []
 
-        response.append(
-            f"Based on your {cutoff} cutoff, "
-            f"{community} category and "
-            f"{branch} preference:"
-        )
-
+        response.append("TNEA COLLEGE RECOMMENDATIONS")
+        response.append("================================")
         response.append("")
 
-        response.append(
-            "Here are colleges matched against "
-            "the 2025 historical cutoff:"
-        )
-
+        response.append("YOUR PROFILE")
+        response.append(f"• Cutoff    : {float(cutoff):.1f}")
+        response.append(f"• Community : {community}")
+        response.append(f"• Branch    : {branch}")
         response.append("")
 
-        for index, (_, row) in enumerate(
-            recommendations.iterrows(),
-            start=1
-        ):
+        categories = [
+            "Strong historical option",
+            "Good historical option",
+            "Borderline historical option",
+            "Stretch option",
+            "More competitive than 2025 cutoff",
+        ]
 
+        category_titles = {
+            "Strong historical option": "STRONG HISTORICAL MATCHES",
+            "Good historical option": "GOOD HISTORICAL MATCHES",
+            "Borderline historical option": "BORDERLINE HISTORICAL MATCHES",
+            "Stretch option": "STRETCH OPTIONS",
+            "More competitive than 2025 cutoff": "MORE COMPETITIVE THAN 2025",
+        }
+
+        displayed = False
+
+        for category in categories:
+            category_rows = recommendations[recommendations["category"] == category]
+
+            if category_rows.empty:
+                continue
+
+            displayed = True
+            response.append(category_titles[category])
+            response.append("--------------------------------")
+
+            for index, (_, row) in enumerate(
+                category_rows.iterrows(),
+                start=1,
+            ):
+                response.append(f"{index}. {row['college_name']}")
+                response.append(f"   2025 cutoff : {float(row['cutoff']):.1f}")
+                response.append(f"   Your margin  : {float(row['margin']):+.1f}")
+                response.append("")
+
+        if not displayed:
             response.append(
-                f"{index}. {row['college_name']}"
+                "No suitable historical matches were found " "for this combination."
             )
-
-            response.append(
-                f"   2025 cutoff: "
-                f"{row['cutoff']}"
-            )
-
-            response.append(
-                f"   Difference: "
-                f"{row['margin']:+.1f}"
-            )
-
-            response.append(
-                f"   Historical match: "
-                f"{row['category']}"
-            )
-
             response.append("")
 
+        response.append("HOW TO READ THIS")
+        response.append("--------------------------------")
+        response.append("Your margin = your cutoff - 2025 historical cutoff.")
         response.append(
-            "Important: These results are based "
-            "on 2025 historical cutoff data. "
-            "They are not admission guarantees "
-            "for the upcoming counselling."
+            "A positive margin means your cutoff was higher " "than the 2025 cutoff."
+        )
+        response.append("")
+
+        response.append("IMPORTANT")
+        response.append("--------------------------------")
+        response.append(
+            "These recommendations are based on 2025 historical " "TNEA cutoff data."
+        )
+        response.append(
+            "They are NOT admission guarantees for the upcoming counselling."
+        )
+        response.append(
+            "Actual cutoffs can change depending on seats, demand, "
+            "community, and counselling trends."
         )
 
         return "\n".join(response)
@@ -452,5 +475,6 @@ class TNEAChatbot:
     # ==================================================
 
     def reset(self):
-
         self.state.reset()
+        self.pending_intent = None
+        self.last_intent = None
