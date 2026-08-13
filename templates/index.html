@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>TNEA Counselling Assistant</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="app-shell">
+
+
+    <!-- =====================================================
+         TOP NAVIGATION
+    ====================================================== -->
+
+    <header class="topbar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                🎓
+            </div>
+
+            <div class="brand-text">
+
+                <h1>TNEA</h1>
+
+                <span>
+                    COUNSELLING ASSISTANT
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <nav class="top-navigation">
+
+            <button
+                class="nav-item active"
+                type="button"
+            >
+                Chat
+            </button>
+
+            <button
+                class="nav-item"
+                type="button"
+            >
+                Colleges
+            </button>
+
+            <button
+                class="nav-item"
+                type="button"
+            >
+                Branches
+            </button>
+
+            <button
+                class="nav-item"
+                type="button"
+            >
+                Cutoff
+            </button>
+
+            <button
+                class="nav-item"
+                type="button"
+            >
+                About
+            </button>
+
+        </nav>
+
+
+        <div class="top-actions">
+
+            <div class="online-status">
+
+                <span class="status-dot"></span>
+
+                <span>Online</span>
+
+            </div>
+
+
+            <button
+                class="theme-button"
+                type="button"
+                title="Theme"
+            >
+                ☾
+            </button>
+
+
+            <button
+                class="settings-button"
+                type="button"
+                title="Settings"
+            >
+                ⚙
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         MAIN LAYOUT
+    ====================================================== -->
+
+    <main class="dashboard">
+
+
+        <!-- =================================================
+             LEFT SIDEBAR
+        ================================================== -->
+
+        <aside class="left-sidebar">
+
+
+            <div class="sidebar-navigation">
+
+                <button
+                    class="sidebar-item active"
+                    type="button"
+                >
+                    <span class="sidebar-icon">◉</span>
+                    <span>Chat</span>
+                </button>
+
+
+                <button
+                    class="sidebar-item"
+                    type="button"
+                >
+                    <span class="sidebar-icon">⌂</span>
+                    <span>Colleges</span>
+                </button>
+
+
+                <button
+                    class="sidebar-item"
+                    type="button"
+                >
+                    <span class="sidebar-icon">⌘</span>
+                    <span>Branches</span>
+                </button>
+
+
+                <button
+                    class="sidebar-item"
+                    type="button"
+                >
+                    <span class="sidebar-icon">▥</span>
+                    <span>Cutoff Lookup</span>
+                </button>
+
+
+                <button
+                    class="sidebar-item"
+                    type="button"
+                >
+                    <span class="sidebar-icon">⌕</span>
+                    <span>College Search</span>
+                </button>
+
+
+                <button
+                    class="sidebar-item"
+                    type="button"
+                >
+                    <span class="sidebar-icon">●</span>
+                    <span>My Profile</span>
+                </button>
+
+
+                <button
+                    class="sidebar-item"
+                    type="button"
+                >
+                    <span class="sidebar-icon">ⓘ</span>
+                    <span>About</span>
+                </button>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 ANIME ASSISTANT
+            ============================================== -->
+
+            <div class="assistant-panel">
+
+                <div class="assistant-label">
+                    YOUR AI ASSISTANT
+                </div>
+
+                <div class="assistant-name">
+                    TNEA Assistant
+                </div>
+
+                <div class="assistant-live">
+
+                    <span class="live-dot"></span>
+
+                    Live
+
+                </div>
+
+
+                <div
+                    class="mascot"
+                    id="mascot"
+                >
+
+                    <div class="mascot-face">
+
+                        <div class="mascot-eye left"></div>
+
+                        <div class="mascot-eye right"></div>
+
+                        <div class="mascot-mouth">
+                            ˘
+                        </div>
+
+                    </div>
+
+                    <div class="mascot-body"></div>
+
+                </div>
+
+
+                <div
+                    class="assistant-bubble"
+                    id="assistantBubble"
+                >
+
+                    Hi! I'm your TNEA assistant.
+
+                    <br>
+
+                    Let's find the right college
+                    for you.
+
+                </div>
+
+
+                <button
+                    class="character-button"
+                    type="button"
+                >
+                    Change Character
+                </button>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 THEME SWITCH
+            ============================================== -->
+
+            <div class="theme-switch">
+
+                <button
+                    class="theme-option active"
+                    type="button"
+                >
+                    ☾
+                    <span>Dark</span>
+                </button>
+
+
+                <button
+                    class="theme-option"
+                    type="button"
+                >
+                    ☀
+                    <span>Light</span>
+                </button>
+
+            </div>
+
+
+        </aside>
+
+
+
+        <!-- =================================================
+             CENTER CHAT
+        ================================================== -->
+
+        <section class="chat-section">
+
+
+            <!-- =============================================
+                 CHAT HEADER
+            ============================================== -->
+
+            <div class="chat-header">
+
+                <div class="chat-title-area">
+
+
+                    <div class="assistant-avatar">
+
+                        <div class="avatar-face">
+
+                            <span></span>
+                            <span></span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <div class="chat-title-row">
+
+                            <h2>
+                                TNEA Counselling Assistant
+                            </h2>
+
+                            <span class="ai-badge">
+                                AI Powered
+                            </span>
+
+                        </div>
+
+
+                        <p>
+                            Ask about colleges, branches
+                            and 2025 cutoff data.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="chat-online">
+
+                    <span class="status-dot"></span>
+
+                    Online
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 MESSAGES
+            ============================================== -->
+
+            <div
+                class="chat-messages"
+                id="chatMessages"
+            >
+
+
+                <!-- INITIAL BOT MESSAGE -->
+
+                <div class="message-row bot-row">
+
+                    <div class="message-avatar">
+
+                        <div class="mini-avatar">
+                            ◉
+                        </div>
+
+                    </div>
+
+
+                    <div class="message bot-message welcome-message">
+
+                        <h3>
+                            Hello!
+                        </h3>
+
+
+                        <p>
+
+                            I can help you explore TNEA
+                            counselling using the 2025
+                            cutoff dataset.
+
+                        </p>
+
+
+                        <p>
+
+                            Find colleges, branches and
+                            cutoff information based on
+                            your cutoff and community.
+
+                        </p>
+
+
+                        <div class="message-divider"></div>
+
+
+                        <h4>
+                            ✦ Try asking:
+                        </h4>
+
+
+                        <div class="suggestions">
+
+
+                            <button
+                                type="button"
+                                class="suggestion-button"
+                                onclick="sendMessage('I want CSE colleges')"
+                            >
+
+                                🎓
+
+                                <span>
+                                    I want CSE colleges
+                                </span>
+
+                                <strong>
+                                    →
+                                </strong>
+
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="suggestion-button"
+                                onclick="sendMessage('What is the cutoff for CSE?')"
+                            >
+
+                                ▥
+
+                                <span>
+                                    What is the cutoff for CSE?
+                                </span>
+
+                                <strong>
+                                    →
+                                </strong>
+
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="suggestion-button"
+                                onclick="sendMessage('What branches are available?')"
+                            >
+
+                                ⌘
+
+                                <span>
+                                    What branches are available?
+                                </span>
+
+                                <strong>
+                                    →
+                                </strong>
+
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="suggestion-button"
+                                onclick="sendMessage('Tell me about Anna University')"
+                            >
+
+                                ⌂
+
+                                <span>
+                                    Tell me about Anna University
+                                </span>
+
+                                <strong>
+                                    →
+                                </strong>
+
+                            </button>
+
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 INPUT
+            ============================================== -->
+
+            <div class="chat-input-wrapper">
+
+                <form id="chatForm">
+
+
+                    <button
+                        type="button"
+                        class="attachment-button"
+                    >
+                        +
+                    </button>
+
+
+                    <input
+                        type="text"
+                        id="messageInput"
+                        placeholder="Ask something about TNEA..."
+                        autocomplete="off"
+                    >
+
+
+                    <button
+                        type="submit"
+                        class="send-button"
+                    >
+                        ➤
+                    </button>
+
+                </form>
+
+
+                <div class="input-hint">
+
+                    Press Enter to send
+                    •
+                    Shift + Enter for new line
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             RIGHT SIDEBAR
+        ================================================== -->
+
+        <aside class="right-sidebar">
+
+
+            <!-- =============================================
+                 PROFILE
+            ============================================== -->
+
+            <div class="dashboard-card profile-card">
+
+                <div class="card-header">
+
+                    <h3>
+                        Your Profile
+                    </h3>
+
+                    <button
+                        type="button"
+                        class="edit-button"
+                    >
+                        Edit
+                    </button>
+
+                </div>
+
+
+                <div class="profile-row">
+
+                    <span>🏆 Cutoff</span>
+
+                    <strong id="profileCutoff">
+                        Not set
+                    </strong>
+
+                </div>
+
+
+                <div class="profile-row">
+
+                    <span>👥 Community</span>
+
+                    <strong id="profileCommunity">
+                        Not set
+                    </strong>
+
+                </div>
+
+
+                <div class="profile-row">
+
+                    <span>⌘ Branch</span>
+
+                    <strong id="profileBranch">
+                        Not set
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 PROGRESS
+            ============================================== -->
+
+            <div class="dashboard-card progress-card">
+
+                <div class="progress-header">
+
+                    <h3>
+                        Your Counselling Progress
+                    </h3>
+
+                    <strong id="progressPercent">
+                        0%
+                    </strong>
+
+                </div>
+
+
+                <div class="progress-bar">
+
+                    <div
+                        class="progress-fill"
+                        id="progressFill"
+                    ></div>
+
+                </div>
+
+
+                <div class="progress-steps">
+
+
+                    <div
+                        class="progress-step"
+                        id="stepCutoff"
+                    >
+                        <span></span>
+                        Provide Cutoff
+                    </div>
+
+
+                    <div
+                        class="progress-step"
+                        id="stepCommunity"
+                    >
+                        <span></span>
+                        Select Community
+                    </div>
+
+
+                    <div
+                        class="progress-step"
+                        id="stepBranch"
+                    >
+                        <span></span>
+                        Choose Branch
+                    </div>
+
+
+                    <div
+                        class="progress-step"
+                        id="stepRecommendation"
+                    >
+                        <span></span>
+                        Get Recommendations
+                    </div>
+
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 QUICK STATS
+            ============================================== -->
+
+            <div class="dashboard-card stats-card">
+
+                <h3>
+                    Quick Stats
+                </h3>
+
+
+                <div class="stats-grid">
+
+
+                    <div class="stat-box">
+
+                        <strong>
+                            500+
+                        </strong>
+
+                        <span>
+                            Colleges
+                        </span>
+
+                    </div>
+
+
+                    <div class="stat-box">
+
+                        <strong>
+                            100+
+                        </strong>
+
+                        <span>
+                            Branches
+                        </span>
+
+                    </div>
+
+
+                    <div class="stat-box">
+
+                        <strong>
+                            2025
+                        </strong>
+
+                        <span>
+                            Dataset
+                        </span>
+
+                    </div>
+
+
+                    <div class="stat-box">
+
+                        <strong>
+                            TNEA
+                        </strong>
+
+                        <span>
+                            Counselling
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 FEATURES
+            ============================================== -->
+
+            <div class="dashboard-card features-card">
+
+                <h3>
+                    ✦ What I Can Help With
+                </h3>
+
+
+                <ul>
+
+                    <li>
+                        College recommendations
+                    </li>
+
+                    <li>
+                        Cutoff lookup
+                    </li>
+
+                    <li>
+                        Branch search
+                    </li>
+
+                    <li>
+                        College information
+                    </li>
+
+                    <li>
+                        Compare colleges
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+
+            <!-- =============================================
+                 RESET
+            ============================================== -->
+
+            <button
+                class="reset-button"
+                type="button"
+                onclick="resetChat()"
+            >
+
+                ↻
+
+                Reset Conversation
+
+            </button>
+
+
+        </aside>
+
+    </main>
+
+
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+
+    <footer class="footer">
+
+        <span>
+            Based on 2025 historical TNEA cutoff data.
+            Results are not admission guarantees.
+        </span>
+
+
+        <span>
+            Made for TNEA Aspirants
+        </span>
+
+    </footer>
+
+
+</div>
+
+
+<script
+    src="{{ url_for('static', filename='js/app.js') }}"
+></script>
+
+</body>
+
+</html>

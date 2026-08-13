@@ -58,6 +58,14 @@ class ConversationState:
             "branch": None,
             "college": None
         }
+        
+        
+    # ==============================================
+# CONVERT STATE TO DICTIONARY
+# ==============================================
+
+    def to_dict(self):
+        return self.data.copy()
 
     # ==============================================
     # DEBUG
