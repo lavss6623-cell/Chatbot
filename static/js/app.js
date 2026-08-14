@@ -1,1228 +1,1537 @@
-/* ============================================================
-   TNEA COUNSELLING ASSISTANT
-   FRONTEND JAVASCRIPT
-============================================================ */
-
-
-/* ============================================================
-   DOM ELEMENTS
-============================================================ */
-
-const chatForm = document.getElementById("chatForm");
-
-const messageInput = document.getElementById("messageInput");
-
-const chatMessages = document.getElementById("chatMessages");
-
-const mascot = document.getElementById("mascot");
-
-const assistantBubble =
-    document.getElementById("assistantBubble");
-
-const profileCutoff =
-    document.getElementById("profileCutoff");
-
-const profileCommunity =
-    document.getElementById("profileCommunity");
-
-const profileBranch =
-    document.getElementById("profileBranch");
-
-const progressPercent =
-    document.getElementById("progressPercent");
-
-const progressFill =
-    document.getElementById("progressFill");
-
-
-/* ============================================================
-   APPLICATION STATE
-============================================================ */
-
-let isProcessing = false;
-
-
-/* ============================================================
-   SEND MESSAGE
-============================================================ */
-
-async function sendMessage(message) {
-
-    /*
-        Prevent empty messages
-    */
-
-    if (!message || !message.trim()) {
-        return;
-    }
+    /* =====================================================
+       ROBIN STATE SYSTEM
+       ===================================================== */
 
 
     /*
-        Prevent multiple requests at the same time
-    */
+     * -----------------------------------------------------
+     * ROBIN MESSAGES
+     * -----------------------------------------------------
+     */
 
-    if (isProcessing) {
-        return;
-    }
+    const robinMessages = {
 
+        idle:
+            "I'm listening...",
 
-    message = message.trim();
-
-
-    /*
-        Remove welcome suggestions after first message
-    */
-
-    removeWelcomeMessage();
-
-
-    /*
-        Add user's message
-    */
-
-    addUserMessage(message);
-
-
-    /*
-        Clear input box
-    */
-
-    messageInput.value = "";
-
-
-    /*
-        Start assistant thinking state
-    */
-
-    setAssistantState("thinking");
-
-
-    /*
-        Add typing indicator
-    */
-
-    const typingMessage = addTypingMessage();
-
-
-    isProcessing = true;
-
-
-    try {
-
-        /*
-            Send request to Flask
-        */
-
-        const response = await fetch("/chat", {
-
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-                message: message
-            })
-
-        });
-
-
-        /*
-            Convert response to JSON
-        */
-
-        const data = await response.json();
-
-
-        /*
-            Remove typing indicator
-        */
-
-        removeTypingMessage(typingMessage);
-
-
-        /*
-            Handle backend errors
-        */
-
-        if (!response.ok || data.error) {
-
-            addBotMessage(
-                data.error ||
-                "Something went wrong while processing your message."
-            );
-
-            setAssistantState("error");
-
-            return;
-        }
-
-
-        /*
-            Display bot response
-        */
-
-        addBotMessage(data.response);
-
-
-        /*
-            Update profile information
-        */
-
-        if (data.state) {
-
-            updateProfile(data.state);
-
-            updateProgress(data.state);
-
-        }
-
-
-        /*
-            Assistant finished successfully
-        */
-
-        setAssistantState("happy");
-
-
-    } catch (error) {
-
-        console.error("Chat error:", error);
-
-
-        removeTypingMessage(typingMessage);
-
-
-        addBotMessage(
-            "I couldn't connect to the TNEA server. Please make sure Flask is running."
-        );
-
-
-        setAssistantState("error");
-
-
-    } finally {
-
-        isProcessing = false;
-
-        messageInput.focus();
-
-    }
-
-}
-
-
-/* ============================================================
-   FORM SUBMISSION
-============================================================ */
-
-if (chatForm) {
-
-    chatForm.addEventListener(
-        "submit",
-        function (event) {
-
-            event.preventDefault();
-
-            sendMessage(messageInput.value);
-
-        }
-    );
-
-}
-
-
-/* ============================================================
-   ENTER KEY
-============================================================ */
-
-if (messageInput) {
-
-    messageInput.addEventListener(
-        "keydown",
-        function (event) {
-
-            /*
-                Enter sends the message.
-            */
-
-            if (
-                event.key === "Enter" &&
-                !event.shiftKey
-            ) {
-
-                event.preventDefault();
-
-                sendMessage(messageInput.value);
-
-            }
-
-        }
-    );
-
-}
-
-
-/* ============================================================
-   ADD USER MESSAGE
-============================================================ */
-
-function addUserMessage(message) {
-
-    const row = document.createElement("div");
-
-    row.className =
-        "message-row user-row";
-
-
-    const bubble = document.createElement("div");
-
-    bubble.className =
-        "message user-message";
-
-
-    /*
-        textContent prevents HTML injection.
-    */
-
-    bubble.textContent = message;
-
-
-    row.appendChild(bubble);
-
-
-    chatMessages.appendChild(row);
-
-
-    scrollToBottom();
-
-}
-
-
-/* ============================================================
-   ADD BOT MESSAGE
-============================================================ */
-
-function addBotMessage(message) {
-
-    const row = document.createElement("div");
-
-    row.className =
-        "message-row bot-row";
-
-
-    /*
-        Avatar
-    */
-
-    const avatarContainer =
-        document.createElement("div");
-
-    avatarContainer.className =
-        "message-avatar";
-
-
-    const avatar =
-        document.createElement("div");
-
-    avatar.className =
-        "mini-avatar";
-
-    avatar.textContent = "◉";
-
-
-    avatarContainer.appendChild(avatar);
-
-
-    /*
-        Message bubble
-    */
-
-    const bubble =
-        document.createElement("div");
-
-    bubble.className =
-        "message bot-message";
-
-
-    /*
-        Preserve line breaks
-    */
-
-    bubble.style.whiteSpace =
-        "pre-wrap";
-
-
-    bubble.textContent = message;
-
-
-    /*
-        Build row
-    */
-
-    row.appendChild(avatarContainer);
-
-    row.appendChild(bubble);
-
-
-    chatMessages.appendChild(row);
-
-
-    scrollToBottom();
-
-}
-
-
-/* ============================================================
-   TYPING INDICATOR
-============================================================ */
-
-function addTypingMessage() {
-
-    const row =
-        document.createElement("div");
-
-    row.className =
-        "message-row bot-row";
-
-
-    row.dataset.typing =
-        "true";
-
-
-    /*
-        Avatar
-    */
-
-    const avatarContainer =
-        document.createElement("div");
-
-    avatarContainer.className =
-        "message-avatar";
-
-
-    const avatar =
-        document.createElement("div");
-
-    avatar.className =
-        "mini-avatar";
-
-    avatar.textContent =
-        "◉";
-
-
-    avatarContainer.appendChild(avatar);
-
-
-    /*
-        Bubble
-    */
-
-    const bubble =
-        document.createElement("div");
-
-    bubble.className =
-        "message bot-message";
-
-
-    /*
-        Typing animation
-    */
-
-    const indicator =
-        document.createElement("div");
-
-    indicator.className =
-        "typing-indicator";
-
-
-    for (let i = 0; i < 3; i++) {
-
-        const dot =
-            document.createElement("span");
-
-        indicator.appendChild(dot);
-
-    }
-
-
-    bubble.appendChild(indicator);
-
-
-    row.appendChild(avatarContainer);
-
-    row.appendChild(bubble);
-
-
-    chatMessages.appendChild(row);
-
-
-    scrollToBottom();
-
-
-    return row;
-
-}
-
-
-/* ============================================================
-   REMOVE TYPING MESSAGE
-============================================================ */
-
-function removeTypingMessage(element) {
-
-    if (!element) {
-        return;
-    }
-
-
-    if (element.parentNode) {
-
-        element.parentNode.removeChild(element);
-
-    }
-
-}
-
-
-/* ============================================================
-   REMOVE WELCOME MESSAGE
-============================================================ */
-
-function removeWelcomeMessage() {
-
-    const welcome =
-        document.querySelector(
-            ".welcome-message"
-        );
-
-
-    if (welcome) {
-
-        const row =
-            welcome.closest(
-                ".message-row"
-            );
-
-
-        if (row) {
-
-            row.remove();
-
-        } else {
-
-            welcome.remove();
-
-        }
-
-    }
-
-}
-
-
-/* ============================================================
-   SCROLL CHAT TO BOTTOM
-============================================================ */
-
-function scrollToBottom() {
-
-    if (!chatMessages) {
-        return;
-    }
-
-
-    setTimeout(
-        function () {
-
-            chatMessages.scrollTop =
-                chatMessages.scrollHeight;
-
-        },
-        50
-    );
-
-}
-
-
-/* ============================================================
-   UPDATE PROFILE
-============================================================ */
-
-function updateProfile(state) {
-
-    if (!state) {
-        return;
-    }
-
-
-    /*
-        Cutoff
-    */
-
-    if (
-        state.cutoff !== null &&
-        state.cutoff !== undefined
-    ) {
-
-        profileCutoff.textContent =
-            state.cutoff;
-
-    } else {
-
-        profileCutoff.textContent =
-            "Not set";
-
-    }
-
-
-    /*
-        Community
-    */
-
-    if (
-        state.community !== null &&
-        state.community !== undefined
-    ) {
-
-        profileCommunity.textContent =
-            state.community.toUpperCase();
-
-    } else {
-
-        profileCommunity.textContent =
-            "Not set";
-
-    }
-
-
-    /*
-        Branch
-    */
-
-    if (
-        state.branch !== null &&
-        state.branch !== undefined
-    ) {
-
-        profileBranch.textContent =
-            formatBranch(state.branch);
-
-    } else {
-
-        profileBranch.textContent =
-            "Not set";
-
-    }
-
-}
-
-
-/* ============================================================
-   FORMAT BRANCH NAME
-============================================================ */
-
-function formatBranch(branch) {
-
-    if (!branch) {
-        return "Not set";
-    }
-
-
-    const branchMap = {
-
-        "cse":
-            "CSE",
-
-        "ece":
-            "ECE",
-
-        "eee":
-            "EEE",
-
-        "mech":
-            "Mechanical",
-
-        "civil":
-            "Civil",
-
-        "it":
-            "IT"
+        thinking:
+            "Let me check the TNEA data..."
 
     };
 
 
-    const normalized =
-        branch.toLowerCase().trim();
+    /*
+     * -----------------------------------------------------
+     * ROBIN IMAGES
+     * -----------------------------------------------------
+     *
+     * IMPORTANT:
+     *
+     * These images control ONLY the large Robin character
+     * in the sidebar.
+     *
+     * Other Robin images used inside chat messages are
+     * NOT controlled by this state system.
+     * -----------------------------------------------------
+     */
+
+    const robinImages = {
+
+        idle:
+            "/static/images/robin-main.png",
+
+        thinking:
+            "/static/images/thinking.png"
+
+    };
 
 
-    if (branchMap[normalized]) {
+    /*
+     * -----------------------------------------------------
+     * SET ROBIN STATE
+     * -----------------------------------------------------
+     */
 
-        return branchMap[normalized];
+    function setRobinState(state) {
+
+        /*
+         * Save current state.
+         */
+
+        robinState = state;
+
+
+        /*
+         * -------------------------------------------------
+         * Select image
+         * -------------------------------------------------
+         */
+
+        const image =
+            robinImages[state] ||
+            robinImages.idle;
+
+
+        /*
+         * -------------------------------------------------
+         * Change ONLY the sidebar Robin
+         * -------------------------------------------------
+         *
+         * robinCharacter must point to the large Robin
+         * image in the right sidebar.
+         */
+
+        if (robinCharacter) {
+
+            robinCharacter.src =
+                image;
+
+        }
+
+
+        /*
+         * -------------------------------------------------
+         * Change sidebar speech
+         * -------------------------------------------------
+         */
+
+        if (robinStatus) {
+
+            robinStatus.textContent =
+                robinMessages[state] ||
+                robinMessages.idle;
+
+        }
+
+
+        /*
+         * -------------------------------------------------
+         * Update CSS state
+         * -------------------------------------------------
+         */
+
+        if (robinCharacter) {
+
+            robinCharacter.classList.remove(
+                "robin-idle",
+                "robin-thinking"
+            );
+
+
+            robinCharacter.classList.add(
+                `robin-${state}`
+            );
+
+        }
 
     }
 
 
     /*
-        If backend sends a full branch name,
-        keep it readable.
-    */
+     * -----------------------------------------------------
+     * WAIT HELPER
+     * -----------------------------------------------------
+     */
 
-    return branch
-        .toLowerCase()
-        .replace(/\b\w/g, function (letter) {
+    function wait(milliseconds) {
 
-            return letter.toUpperCase();
+        return new Promise(resolve => {
+
+            setTimeout(
+                resolve,
+                milliseconds
+            );
 
         });
 
-}
-
-
-/* ============================================================
-   UPDATE COUNSELLING PROGRESS
-============================================================ */
-
-function updateProgress(state) {
-
-    if (!state) {
-        return;
-    }
-
-
-    let completed = 0;
-
-
-    /*
-        Cutoff
-    */
-
-    const cutoffStep =
-        document.getElementById(
-            "stepCutoff"
-        );
-
-
-    if (
-        state.cutoff !== null &&
-        state.cutoff !== undefined
-    ) {
-
-        completed++;
-
-        cutoffStep.classList.add(
-            "completed"
-        );
-
-    } else {
-
-        cutoffStep.classList.remove(
-            "completed"
-        );
-
     }
 
 
     /*
-        Community
-    */
+     * -----------------------------------------------------
+     * PRELOAD ROBIN IMAGES
+     * -----------------------------------------------------
+     *
+     * This loads thinking.png before the user sends a
+     * message so the image doesn't suddenly appear late.
+     * -----------------------------------------------------
+     */
 
-    const communityStep =
-        document.getElementById(
-            "stepCommunity"
-        );
+    const robinPreloadImages = [
+
+        robinImages.idle,
+
+        robinImages.thinking
+
+    ];
 
 
-    if (
-        state.community !== null &&
-        state.community !== undefined
-    ) {
+    robinPreloadImages.forEach(src => {
 
-        completed++;
+        const image =
+            new Image();
 
-        communityStep.classList.add(
-            "completed"
-        );
+        image.src =
+            src;
 
-    } else {
+    });
 
-        communityStep.classList.remove(
-            "completed"
-        );
+
+    /* =====================================================
+       END ROBIN STATE SYSTEM
+       ===================================================== */
+
+
+           /* =====================================================
+       ESCAPE HTML
+    ===================================================== */
+
+    function escapeHTML(text) {
+
+        const element =
+            document.createElement("div");
+
+        element.textContent =
+            String(text ?? "");
+
+        return element.innerHTML;
 
     }
 
 
-    /*
-        Branch
-    */
+    /* =====================================================
+       FORMAT BOT RESPONSE
+    ===================================================== */
 
-    const branchStep =
-        document.getElementById(
-            "stepBranch"
-        );
+    function formatBotResponse(text) {
+
+        if (!text) {
+
+            return "";
+
+        }
 
 
-    if (
-        state.branch !== null &&
-        state.branch !== undefined
-    ) {
+        return escapeHTML(text)
+            .replace(/\n/g, "<br>");
 
-        completed++;
+    }
 
-        branchStep.classList.add(
-            "completed"
-        );
 
-    } else {
+    /* =====================================================
+       CURRENT TIME
+    ===================================================== */
 
-        branchStep.classList.remove(
-            "completed"
+    function getCurrentTime() {
+
+        return new Date().toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
         );
 
     }
 
 
-    /*
-        Recommendation
+    /* =====================================================
+       ADD USER MESSAGE
+    ===================================================== */
 
-        We consider the recommendation
-        stage complete when all three
-        profile values exist.
-    */
+    function addUserMessage(message) {
 
-    const recommendationStep =
-        document.getElementById(
-            "stepRecommendation"
+        const wrapper =
+            document.createElement("div");
+
+
+        wrapper.className =
+            "message user-message";
+
+
+        wrapper.innerHTML = `
+
+            <div class="message-content">
+
+                <div class="message-bubble">
+
+                    <p>
+                        ${escapeHTML(message)}
+                    </p>
+
+                </div>
+
+                <span class="message-time">
+                    ${getCurrentTime()}
+                </span>
+
+            </div>
+
+        `;
+
+
+        chatMessages.appendChild(
+            wrapper
         );
 
 
-    if (
-        state.cutoff !== null &&
-        state.community !== null &&
-        state.branch !== null
-    ) {
-
-        completed++;
-
-        recommendationStep.classList.add(
-            "completed"
-        );
-
-    } else {
-
-        recommendationStep.classList.remove(
-            "completed"
-        );
+        scrollToBottom();
 
     }
 
 
-    /*
-        Calculate percentage
-    */
+    /* =====================================================
+       ADD ASSISTANT MESSAGE
+    ===================================================== */
 
-    const percentage =
-        Math.round(
-            (completed / 4) * 100
+    function addAssistantMessage(message) {
+
+        const wrapper =
+            document.createElement("div");
+
+
+        wrapper.className =
+            "message assistant-message";
+
+
+        /*
+         * This is ONLY the small avatar beside
+         * the chatbot message.
+         *
+         * It does NOT use robinCharacter.
+         */
+
+        wrapper.innerHTML = `
+
+            <div class="message-avatar">
+
+                <img
+                    src="/static/images/robin-main.png"
+                    alt="Robin"
+                    loading="eager"
+                >
+
+            </div>
+
+
+            <div class="message-content">
+
+                <div class="message-bubble">
+
+                    <p>
+                        ${formatBotResponse(message)}
+                    </p>
+
+                </div>
+
+                <span class="message-time">
+                    ${getCurrentTime()}
+                </span>
+
+            </div>
+
+        `;
+
+
+        chatMessages.appendChild(
+            wrapper
         );
 
 
-    progressPercent.textContent =
-        `${percentage}%`;
+        scrollToBottom();
+
+    }
+
+        /* =====================================================
+       SHOW TYPING INDICATOR
+    ===================================================== */
+
+    function showTypingIndicator() {
+
+        removeTypingIndicator();
 
 
-    progressFill.style.width =
-        `${percentage}%`;
-
-}
+        const wrapper =
+            document.createElement("div");
 
 
-/* ============================================================
-   ASSISTANT STATES
-============================================================ */
+        wrapper.id =
+            "typingIndicator";
 
-function setAssistantState(state) {
 
-    if (!mascot) {
-        return;
+        wrapper.className =
+            "message assistant-message";
+
+
+        wrapper.innerHTML = `
+
+            <div class="message-avatar">
+
+                <img
+                    src="/static/images/robin-main.png"
+                    alt="Robin"
+                >
+
+            </div>
+
+
+            <div class="message-content">
+
+                <div class="typing-indicator">
+
+                    <span></span>
+                    <span></span>
+                    <span></span>
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        chatMessages.appendChild(
+            wrapper
+        );
+
+
+        scrollToBottom();
+
     }
 
 
-    /*
-        Remove previous states
-    */
+    /* =====================================================
+       REMOVE TYPING INDICATOR
+    ===================================================== */
 
-    mascot.classList.remove(
-        "thinking",
-        "happy",
-        "error"
-    );
+    function removeTypingIndicator() {
+
+        const indicator =
+            document.getElementById(
+                "typingIndicator"
+            );
 
 
-    if (state === "thinking") {
+        if (indicator) {
 
-        mascot.classList.add(
+            indicator.remove();
+
+        }
+
+    }
+
+
+    /* =====================================================
+       SCROLL CHAT
+    ===================================================== */
+
+    function scrollToBottom() {
+
+        if (!chatMessages) {
+
+            return;
+
+        }
+
+
+        chatMessages.scrollTo({
+
+            top:
+                chatMessages.scrollHeight,
+
+            behavior:
+                "smooth"
+
+        });
+
+    }
+
+        /* =====================================================
+       SEND MESSAGE
+    ===================================================== */
+
+    async function sendMessage(message) {
+
+        /*
+         * Clean message.
+         */
+
+        message =
+            String(message ?? "").trim();
+
+
+        /*
+         * Ignore empty messages.
+         */
+
+        if (!message) {
+
+            return;
+
+        }
+
+
+        /*
+         * Prevent duplicate requests.
+         */
+
+        if (isProcessing) {
+
+            return;
+
+        }
+
+
+        /*
+         * Start processing.
+         */
+
+        isProcessing = true;
+
+
+        /*
+         * Disable input.
+         */
+
+        setInputState(true);
+
+
+        /*
+         * Show user's message.
+         */
+
+        addUserMessage(
+            message
+        );
+
+
+        /*
+         * Clear input.
+         */
+
+        messageInput.value = "";
+
+
+        /*
+         * -------------------------------------------------
+         * ROBIN STARTS THINKING
+         * -------------------------------------------------
+         */
+
+        const thinkingStartedAt =
+            Date.now();
+
+
+        setRobinState(
             "thinking"
         );
 
 
-        assistantBubble.textContent =
-            "Hmm... let me check the TNEA data.";
+        /*
+         * Show chat typing indicator.
+         */
 
-    }
-
-
-    else if (state === "happy") {
-
-        mascot.classList.add(
-            "happy"
-        );
+        showTypingIndicator();
 
 
-        assistantBubble.textContent =
-            "Done! I found something useful for you.";
+        try {
 
-    }
+            /*
+             * -------------------------------------------------
+             * SEND REQUEST TO FLASK
+             * -------------------------------------------------
+             */
 
+            const response =
+                await fetch(
+                    "/chat",
+                    {
+                        method: "POST",
 
-    else if (state === "error") {
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
 
-        mascot.classList.add(
-            "error"
-        );
-
-
-        assistantBubble.textContent =
-            "Something went wrong. Let's try again.";
-
-    }
-
-
-    else {
-
-        assistantBubble.innerHTML =
-            "Hi! I'm your TNEA assistant.<br>Let's find the right college for you.";
-
-    }
-
-}
+                        body: JSON.stringify({
+                            message:
+                                message
+                        })
+                    }
+                );
 
 
-/* ============================================================
-   MASCOT INTERACTION
-============================================================ */
+            /*
+             * Parse JSON.
+             */
 
-if (mascot) {
+            const data =
+                await response.json();
 
-    mascot.addEventListener(
-        "click",
-        function () {
 
-            mascot.classList.add(
-                "happy"
+            /*
+             * Remove typing indicator.
+             */
+
+            removeTypingIndicator();
+
+
+            /*
+             * -------------------------------------------------
+             * HTTP ERROR
+             * -------------------------------------------------
+             */
+
+            if (!response.ok) {
+
+                throw new Error(
+
+                    data.error ||
+                    "Unable to process your request."
+
+                );
+
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * BACKEND ERROR
+             * -------------------------------------------------
+             */
+
+            if (data.error) {
+
+                throw new Error(
+                    data.error
+                );
+
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * UPDATE PROFILE
+             * -------------------------------------------------
+             */
+
+            if (data.state) {
+
+                updateProfile(
+                    data.state
+                );
+
+
+                updateProgress(
+                    data.state
+                );
+
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * ENSURE THINKING IS VISIBLE
+             * -------------------------------------------------
+             */
+
+            const thinkingDuration =
+                Date.now() -
+                thinkingStartedAt;
+
+
+            const minimumThinkingTime =
+                1200;
+
+
+            if (
+                thinkingDuration <
+                minimumThinkingTime
+            ) {
+
+                await wait(
+
+                    minimumThinkingTime -
+                    thinkingDuration
+
+                );
+
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * SHOW BOT RESPONSE
+             * -------------------------------------------------
+             */
+
+            addAssistantMessage(
+
+                data.response ||
+                "I couldn't generate a response."
+
             );
 
 
-            assistantBubble.textContent =
-                "I'm ready! Ask me about TNEA.";
+            /*
+             * -------------------------------------------------
+             * RETURN SIDEBAR ROBIN TO MAIN IMAGE
+             * -------------------------------------------------
+             */
+
+            setRobinState(
+                "idle"
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Chat error:",
+                error
+            );
+
+
+            /*
+             * Remove typing indicator.
+             */
+
+            removeTypingIndicator();
+
+
+            /*
+             * Return sidebar Robin to main image.
+             */
+
+            setRobinState(
+                "idle"
+            );
+
+
+            /*
+             * Show error.
+             */
+
+            addAssistantMessage(
+
+                error.message ||
+                "Something went wrong while contacting the server."
+
+            );
+
+
+        } finally {
+
+            /*
+             * Finish processing.
+             */
+
+            isProcessing =
+                false;
+
+
+            /*
+             * Re-enable input.
+             */
+
+            setInputState(
+                false
+            );
+
+
+            /*
+             * Return focus to input.
+             */
+
+            messageInput.focus();
 
         }
-    );
 
-}
+    }
 
+        /* =====================================================
+       INPUT STATE
+    ===================================================== */
 
-/* ============================================================
-   RESET CONVERSATION
-============================================================ */
+    function setInputState(disabled) {
 
-async function resetChat() {
+        if (messageInput) {
 
-    /*
-        Confirm reset
-    */
+            messageInput.disabled =
+                disabled;
 
-    const confirmed =
-        window.confirm(
-            "Reset your TNEA counselling conversation?"
-        );
+        }
 
 
-    if (!confirmed) {
-        return;
+        if (sendButton) {
+
+            sendButton.disabled =
+                disabled;
+
+
+            if (disabled) {
+
+                sendButton.style.opacity =
+                    "0.5";
+
+                sendButton.style.cursor =
+                    "not-allowed";
+
+            } else {
+
+                sendButton.style.opacity =
+                    "";
+
+                sendButton.style.cursor =
+                    "";
+
+            }
+
+        }
+
     }
 
 
-    try {
+    /* =====================================================
+       USER TYPING
+    ===================================================== */
 
-        /*
-            Call Flask reset endpoint.
-        */
+    if (messageInput) {
 
-        const response =
-            await fetch(
-                "/reset",
-                {
-                    method: "POST"
+        messageInput.addEventListener(
+            "input",
+            () => {
+
+                /*
+                 * Typing does NOT activate thinking.
+                 *
+                 * Robin stays on robin-main.png.
+                 */
+
+                if (!isProcessing) {
+
+                    setRobinState(
+                        "idle"
+                    );
+
                 }
-            );
+
+            }
+        );
+
+    }
 
 
-        const data =
-            await response.json();
+    /* =====================================================
+       FORM SUBMISSION
+    ===================================================== */
+
+    if (chatForm) {
+
+        chatForm.addEventListener(
+            "submit",
+            event => {
+
+                event.preventDefault();
 
 
-        if (!response.ok) {
+                if (isProcessing) {
 
-            throw new Error(
-                data.error ||
-                "Reset failed"
-            );
+                    return;
 
-        }
+                }
 
 
-        /*
-            Clear messages
-        */
+                sendMessage(
+                    messageInput.value
+                );
 
-        chatMessages.innerHTML = "";
+            }
+        );
 
-
-        /*
-            Reset profile
-        */
-
-        profileCutoff.textContent =
-            "Not set";
-
-        profileCommunity.textContent =
-            "Not set";
-
-        profileBranch.textContent =
-            "Not set";
+    }
 
 
-        /*
-            Reset progress
-        */
+    /* =====================================================
+       ENTER KEY
+    ===================================================== */
 
-        progressPercent.textContent =
-            "0%";
+    if (messageInput) {
 
-        progressFill.style.width =
-            "0%";
+        messageInput.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key === "Enter" &&
+                    !event.shiftKey
+                ) {
+
+                    event.preventDefault();
 
 
-        document
-            .querySelectorAll(
-                ".progress-step"
-            )
-            .forEach(
-                function (step) {
+                    if (isProcessing) {
 
-                    step.classList.remove(
-                        "completed"
+                        return;
+
+                    }
+
+
+                    sendMessage(
+                        messageInput.value
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
+       QUICK PROMPTS
+    ===================================================== */
+
+    const quickPromptButtons =
+        document.querySelectorAll(
+            ".quick-prompt"
+        );
+
+
+    quickPromptButtons.forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    if (isProcessing) {
+
+                        return;
+
+                    }
+
+
+                    const message =
+                        button.dataset.message ||
+                        button.textContent.trim();
+
+
+                    if (!message) {
+
+                        return;
+
+                    }
+
+
+                    sendMessage(
+                        message
                     );
 
                 }
             );
 
+        }
+    );
+
+        /* =====================================================
+       RESET CHAT
+    ===================================================== */
+
+    function resetFrontend() {
 
         /*
-            Reset mascot
-        */
+         * Remove dynamically created messages.
+         */
 
-        setAssistantState(
+        if (chatMessages) {
+
+            const dynamicMessages =
+                chatMessages.querySelectorAll(
+                    ".user-message, .assistant-message, #typingIndicator"
+                );
+
+
+            dynamicMessages.forEach(
+                element => {
+
+                    element.remove();
+
+                }
+            );
+
+        }
+
+
+        /*
+         * Reset profile.
+         */
+
+        if (profileCutoff) {
+
+            profileCutoff.textContent =
+                "—";
+
+        }
+
+
+        if (profileCommunity) {
+
+            profileCommunity.textContent =
+                "—";
+
+        }
+
+
+        if (profileBranch) {
+
+            profileBranch.textContent =
+                "—";
+
+        }
+
+
+        /*
+         * Reset progress.
+         */
+
+        [
+            progressCutoff,
+            progressCommunity,
+            progressBranch,
+            progressResults
+
+        ].forEach(step => {
+
+            step?.classList.remove(
+                "completed",
+                "current"
+            );
+
+        });
+
+
+        /*
+         * Reset Robin.
+         */
+
+        setRobinState(
             "idle"
         );
 
 
         /*
-            Add welcome screen again
-        */
+         * Clear input.
+         */
 
-        addWelcomeMessage();
+        messageInput.value = "";
 
 
         messageInput.focus();
 
+    }
 
-    } catch (error) {
 
-        console.error(
-            "Reset error:",
-            error
+    /* =====================================================
+       RESET BUTTON
+    ===================================================== */
+
+    if (resetButton) {
+
+        resetButton.addEventListener(
+            "click",
+            () => {
+
+                if (isProcessing) {
+
+                    return;
+
+                }
+
+
+                const confirmed =
+                    window.confirm(
+                        "Reset your TNEA conversation?"
+                    );
+
+
+                if (!confirmed) {
+
+                    return;
+
+                }
+
+
+                resetFrontend();
+
+            }
         );
+
+    }
+
+
+    /* =====================================================
+       UPDATE PROFILE
+    ===================================================== */
+
+    function updateProfile(state) {
+
+        if (!state) {
+
+            return;
+
+        }
+
+
+        if (
+            state.cutoff !== null &&
+            state.cutoff !== undefined
+        ) {
+
+            profileCutoff.textContent =
+                state.cutoff;
+
+        }
+
+
+        if (state.community) {
+
+            profileCommunity.textContent =
+                state.community;
+
+        }
+
+
+        if (state.branch) {
+
+            profileBranch.textContent =
+                formatBranchName(
+                    state.branch
+                );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       FORMAT BRANCH NAME
+    ===================================================== */
+
+    function formatBranchName(branch) {
+
+        if (!branch) {
+
+            return "—";
+
+        }
+
+
+        const branchNames = {
+
+            cse:
+                "CSE",
+
+            ece:
+                "ECE",
+
+            eee:
+                "EEE",
+
+            it:
+                "IT",
+
+            mechanical:
+                "Mechanical",
+
+            civil:
+                "Civil",
+
+            "computer science and engineering":
+                "CSE",
+
+            "electronics and communication engineering":
+                "ECE",
+
+            "electrical and electronics engineering":
+                "EEE"
+
+        };
+
+
+        const normalized =
+            branch
+                .toString()
+                .trim()
+                .toLowerCase();
+
+
+        return (
+            branchNames[normalized] ||
+            branch
+        );
+
+    }
+
+        /* =====================================================
+       UPDATE PROGRESS
+    ===================================================== */
+
+    function updateProgress(state) {
+
+        if (!state) {
+
+            return;
+
+        }
 
 
         /*
-            Even if the backend reset
-            fails, don't silently pretend
-            everything worked.
-        */
+         * Determine completed information.
+         */
 
-        addBotMessage(
-            "I couldn't reset the conversation. Please try again."
+        const hasCutoff =
+            state.cutoff !== null &&
+            state.cutoff !== undefined;
+
+
+        const hasCommunity =
+            Boolean(
+                state.community
+            );
+
+
+        const hasBranch =
+            Boolean(
+                state.branch
+            );
+
+
+        const recommendationReady =
+            hasCutoff &&
+            hasCommunity &&
+            hasBranch;
+
+
+        /*
+         * Cutoff.
+         */
+
+        if (progressCutoff) {
+
+            progressCutoff.classList.toggle(
+                "completed",
+                hasCutoff
+            );
+
+        }
+
+
+        /*
+         * Community.
+         */
+
+        if (progressCommunity) {
+
+            progressCommunity.classList.toggle(
+                "completed",
+                hasCommunity
+            );
+
+        }
+
+
+        /*
+         * Branch.
+         */
+
+        if (progressBranch) {
+
+            progressBranch.classList.toggle(
+                "completed",
+                hasBranch
+            );
+
+        }
+
+
+        /*
+         * Recommendations.
+         */
+
+        if (progressResults) {
+
+            progressResults.classList.toggle(
+                "completed",
+                recommendationReady
+            );
+
+        }
+
+    }
+        /* =====================================================
+       THEME TOGGLE
+    ===================================================== */
+
+    if (themeButton) {
+
+        themeButton.addEventListener(
+            "click",
+            () => {
+
+                document.body.classList.toggle(
+                    "light-theme"
+                );
+
+
+                const isLight =
+                    document.body.classList.contains(
+                        "light-theme"
+                    );
+
+
+                localStorage.setItem(
+                    "tnea-theme",
+                    isLight
+                        ? "light"
+                        : "dark"
+                );
+
+            }
         );
 
     }
 
-}
 
+    /* =====================================================
+       LOAD SAVED THEME
+    ===================================================== */
 
-/* ============================================================
-   RESTORE WELCOME MESSAGE
-============================================================ */
-
-function addWelcomeMessage() {
-
-    const row =
-        document.createElement(
-            "div"
+    const savedTheme =
+        localStorage.getItem(
+            "tnea-theme"
         );
 
-    row.className =
-        "message-row bot-row";
 
+    if (savedTheme === "light") {
 
-    const avatarContainer =
-        document.createElement(
-            "div"
+        document.body.classList.add(
+            "light-theme"
         );
 
-    avatarContainer.className =
-        "message-avatar";
+    }
 
 
-    const avatar =
-        document.createElement(
-            "div"
+    /* =====================================================
+       SIDEBAR NAVIGATION
+    ===================================================== */
+
+    const navigationItems =
+        document.querySelectorAll(
+            "[data-section]"
         );
 
-    avatar.className =
-        "mini-avatar";
 
-    avatar.textContent =
-        "◉";
+    navigationItems.forEach(
+        item => {
+
+            item.addEventListener(
+                "click",
+                event => {
+
+                    event.preventDefault();
 
 
-    avatarContainer.appendChild(
-        avatar
+                    const section =
+                        item.dataset.section;
+
+
+                    if (!section) {
+
+                        return;
+
+                    }
+
+
+                    navigationItems.forEach(
+                        navItem => {
+
+                            navItem.classList.remove(
+                                "active"
+                            );
+
+                        }
+                    );
+
+
+                    item.classList.add(
+                        "active"
+                    );
+
+
+                    const target =
+                        document.getElementById(
+                            section
+                        );
+
+
+                    if (target) {
+
+                        target.scrollIntoView({
+
+                            behavior:
+                                "smooth",
+
+                            block:
+                                "start"
+
+                        });
+
+                    }
+
+                }
+            );
+
+        }
     );
 
 
-    const bubble =
-        document.createElement(
-            "div"
-        );
+    /* =====================================================
+       QUICK PROMPT KEYBOARD ACCESSIBILITY
+    ===================================================== */
 
-    bubble.className =
-        "message bot-message welcome-message";
+    quickPromptButtons.forEach(
+        button => {
 
-
-    bubble.innerHTML = `
-
-        <h3>Hello!</h3>
-
-        <p>
-            I can help you explore TNEA
-            counselling using the 2025
-            cutoff dataset.
-        </p>
-
-        <p>
-            Find colleges, branches and
-            cutoff information based on
-            your cutoff and community.
-        </p>
-
-        <div class="message-divider"></div>
-
-        <h4>✦ Try asking:</h4>
-
-        <div class="suggestions">
-
-            <button
-                type="button"
-                class="suggestion-button"
-                onclick="sendMessage('I want CSE colleges')"
-            >
-                🎓
-                <span>I want CSE colleges</span>
-                <strong>→</strong>
-            </button>
-
-            <button
-                type="button"
-                class="suggestion-button"
-                onclick="sendMessage('What is the cutoff for CSE?')"
-            >
-                ▥
-                <span>What is the cutoff for CSE?</span>
-                <strong>→</strong>
-            </button>
-
-            <button
-                type="button"
-                class="suggestion-button"
-                onclick="sendMessage('What branches are available?')"
-            >
-                ⌘
-                <span>What branches are available?</span>
-                <strong>→</strong>
-            </button>
-
-            <button
-                type="button"
-                class="suggestion-button"
-                onclick="sendMessage('Tell me about Anna University')"
-            >
-                ⌂
-                <span>Tell me about Anna University</span>
-                <strong>→</strong>
-            </button>
-
-        </div>
-
-    `;
+            button.setAttribute(
+                "role",
+                "button"
+            );
 
 
-    row.appendChild(
-        avatarContainer
-    );
+            button.setAttribute(
+                "tabindex",
+                "0"
+            );
 
-    row.appendChild(
-        bubble
+
+            button.addEventListener(
+                "keydown",
+                event => {
+
+                    if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                    ) {
+
+                        event.preventDefault();
+
+                        button.click();
+
+                    }
+
+                }
+            );
+
+        }
     );
 
 
-    chatMessages.appendChild(
-        row
+    /* =====================================================
+       INITIAL ROBIN
+    ===================================================== */
+
+    setRobinState(
+        "idle"
     );
 
 
-    scrollToBottom();
+    /* =====================================================
+       INITIAL PROFILE
+    ===================================================== */
 
-}
+    updateProfile({
+
+        cutoff:
+            null,
+
+        community:
+            null,
+
+        branch:
+            null
+
+    });
 
 
-/* ============================================================
-   INITIALIZE
-============================================================ */
+    /* =====================================================
+       INITIAL PROGRESS
+    ===================================================== */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+    updateProgress({
+
+        cutoff:
+            null,
+
+        community:
+            null,
+
+        branch:
+            null
+
+    });
+
+
+    /* =====================================================
+       INITIAL INPUT
+    ===================================================== */
+
+    setInputState(
+        false
+    );
+
+
+    /*
+     * Focus input.
+     */
+
+    if (messageInput) {
 
         messageInput.focus();
 
-        updateProgress({
-            cutoff: null,
-            community: null,
-            branch: null
-        });
-
     }
-);
+
+
+    /* =====================================================
+       DEBUG INFORMATION
+    ===================================================== */
+
+    console.log(
+        "TNEA AI frontend initialized."
+    );
+
+
+    console.log(
+        "Robin state:",
+        robinState
+    );
+
+
+    console.log(
+        "Robin character:",
+        robinCharacter
+    );
+
+
+    console.log(
+        "Robin images:",
+        robinImages
+    );
+
+
+    /* =====================================================
+       END DOMContentLoaded
+    ===================================================== */
+
+    
