@@ -17,8 +17,8 @@ class TNEAIntentDetector:
             r"closing.*rank",
             r"closing.*cutoff",
             r"last.*cutoff",
+            r"^\s*cutoff\s*\??\s*$",
         ]
-
         for pattern in cutoff_patterns:
 
             if re.search(pattern, text):
