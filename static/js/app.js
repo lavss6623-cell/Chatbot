@@ -1,8 +1,90 @@
+/* =====================================================
+TNEA CHATBOT FRONTEND
+===================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    /* =====================================================
+       DOM ELEMENTS
+       ===================================================== */
+
+    const chatForm =
+        document.getElementById("chatForm");
+    const messageInput =
+        document.getElementById("messageInput");
+    const sendButton =
+        document.getElementById("sendButton");
+    const chatMessages =
+        document.getElementById("chatMessages");
+
+
+    /* =====================================================
+       CONTROLS
+       ===================================================== */
+
+    const resetButton =
+        document.getElementById("resetButton");
+
+    const themeButton =
+        document.getElementById("themeButton");
+
+
+    /* =====================================================
+   SIDEBAR ROBIN
+===================================================== */
+
+    const robinCharacter =
+        document.getElementById("robinCharacter");
+
+    const robinStatus =
+        document.querySelector(
+            ".robin-status-message span"
+        );
+
+
+    /* =====================================================
+       PROFILE
+       ===================================================== */
+
+    const profileCutoff =
+        document.getElementById("profileCutoff");
+
+    const profileCommunity =
+        document.getElementById("profileCommunity");
+
+    const profileBranch =
+        document.getElementById("profileBranch");
+
+
+    /* =====================================================
+       PROGRESS
+       ===================================================== */
+
+    const progressCutoff =
+        document.getElementById("progressCutoff");
+
+    const progressCommunity =
+        document.getElementById("progressCommunity");
+
+    const progressBranch =
+        document.getElementById("progressBranch");
+
+    const progressResults =
+        document.getElementById("progressResults");
+
+
+    /* =====================================================
+       APPLICATION STATE
+       ===================================================== */
+
+    let isProcessing = false;
+
+    let robinState = "idle";
+
+
     /* =====================================================
        ROBIN STATE SYSTEM
        ===================================================== */
-
-
     /*
      * -----------------------------------------------------
      * ROBIN MESSAGES
@@ -35,17 +117,6 @@
      * -----------------------------------------------------
      */
 
-    const robinImages = {
-
-        idle:
-            "/static/images/robin-main.png",
-
-        thinking:
-            "/static/images/thinking.png"
-
-    };
-
-
     /*
      * -----------------------------------------------------
      * SET ROBIN STATE
@@ -54,78 +125,66 @@
 
     function setRobinState(state) {
 
-        /*
-         * Save current state.
-         */
+    robinState = state;
 
-        robinState = state;
-
-
-        /*
-         * -------------------------------------------------
-         * Select image
-         * -------------------------------------------------
-         */
-
-        const image =
-            robinImages[state] ||
-            robinImages.idle;
+    const robinMessages = {
+        idle: "I'm listening...",
+        thinking: "Let me check the TNEA data...",
+        happy: "I found some useful information.",
+        error: "Something went wrong. Let's try again."
+    };
 
 
-        /*
-         * -------------------------------------------------
-         * Change ONLY the sidebar Robin
-         * -------------------------------------------------
-         *
-         * robinCharacter must point to the large Robin
-         * image in the right sidebar.
-         */
+    /*
+     * ---------------------------------------------
+     * Robin ALWAYS uses robin-main.png
+     * ---------------------------------------------
+     */
 
-        if (robinCharacter) {
+    if (robinCharacter) {
 
-            robinCharacter.src =
-                image;
-
-        }
+        robinCharacter.src =
+            "/static/images/robin-main.png";
 
 
         /*
-         * -------------------------------------------------
-         * Change sidebar speech
-         * -------------------------------------------------
+         * Remove previous animation states.
          */
 
-        if (robinStatus) {
-
-            robinStatus.textContent =
-                robinMessages[state] ||
-                robinMessages.idle;
-
-        }
+        robinCharacter.classList.remove(
+            "robin-idle",
+            "robin-thinking",
+            "robin-happy",
+            "robin-error"
+        );
 
 
         /*
-         * -------------------------------------------------
-         * Update CSS state
-         * -------------------------------------------------
+         * Apply the new visual state.
          */
 
-        if (robinCharacter) {
-
-            robinCharacter.classList.remove(
-                "robin-idle",
-                "robin-thinking"
-            );
-
-
-            robinCharacter.classList.add(
-                `robin-${state}`
-            );
-
-        }
+        robinCharacter.classList.add(
+            `robin-${state}`
+        );
 
     }
 
+
+    /*
+     * ---------------------------------------------
+     * Change speech bubble
+     * ---------------------------------------------
+     */
+
+    if (robinStatus) {
+
+        robinStatus.textContent =
+            robinMessages[state] ||
+            robinMessages.idle;
+
+    }
+
+}
 
     /*
      * -----------------------------------------------------
@@ -147,44 +206,9 @@
     }
 
 
-    /*
-     * -----------------------------------------------------
-     * PRELOAD ROBIN IMAGES
-     * -----------------------------------------------------
-     *
-     * This loads thinking.png before the user sends a
-     * message so the image doesn't suddenly appear late.
-     * -----------------------------------------------------
-     */
-
-    const robinPreloadImages = [
-
-        robinImages.idle,
-
-        robinImages.thinking
-
-    ];
-
-
-    robinPreloadImages.forEach(src => {
-
-        const image =
-            new Image();
-
-        image.src =
-            src;
-
-    });
-
-
     /* =====================================================
-       END ROBIN STATE SYSTEM
-       ===================================================== */
-
-
-           /* =====================================================
-       ESCAPE HTML
-    ===================================================== */
+ESCAPE HTML
+===================================================== */
 
     function escapeHTML(text) {
 
@@ -342,9 +366,9 @@
 
     }
 
-        /* =====================================================
-       SHOW TYPING INDICATOR
-    ===================================================== */
+    /* =====================================================
+   SHOW TYPING INDICATOR
+===================================================== */
 
     function showTypingIndicator() {
 
@@ -446,9 +470,9 @@
 
     }
 
-        /* =====================================================
-       SEND MESSAGE
-    ===================================================== */
+    /* =====================================================
+   SEND MESSAGE
+===================================================== */
 
     async function sendMessage(message) {
 
@@ -749,9 +773,9 @@
 
     }
 
-        /* =====================================================
-       INPUT STATE
-    ===================================================== */
+    /* =====================================================
+   INPUT STATE
+===================================================== */
 
     function setInputState(disabled) {
 
@@ -935,141 +959,303 @@
         }
     );
 
-        /* =====================================================
-       RESET CHAT
-    ===================================================== */
+    /* =====================================================
+   RESET CHAT
+===================================================== */
 
-    function resetFrontend() {
+function resetFrontend() {
 
-        /*
-         * Remove dynamically created messages.
-         */
+    /*
+     * ---------------------------------------------
+     * Remove conversation messages
+     * ---------------------------------------------
+     */
 
-        if (chatMessages) {
+    if (chatMessages) {
 
-            const dynamicMessages =
-                chatMessages.querySelectorAll(
-                    ".user-message, .assistant-message, #typingIndicator"
-                );
+        const dynamicMessages =
+            chatMessages.querySelectorAll(
+                ".user-message, .assistant-message, #typingIndicator"
+            );
+
+        dynamicMessages.forEach(
+            element => {
+                element.remove();
+            }
+        );
+
+    }
 
 
-            dynamicMessages.forEach(
-                element => {
+    /*
+     * ---------------------------------------------
+     * Restore initial Robin welcome message
+     * ---------------------------------------------
+     */
 
-                    element.remove();
+    const welcomeMessage = document.createElement(
+        "div"
+    );
 
-                }
+    welcomeMessage.className =
+        "message assistant-message";
+
+    welcomeMessage.innerHTML = `
+        <div class="message-avatar">
+            <img
+                src="/static/images/robin-main.png"
+                alt="Robin"
+            />
+        </div>
+
+        <div class="message-content">
+
+            <div class="message-bubble">
+
+                <p>Hello! I'm Robin.</p>
+
+                <p>Your TNEA AI Assistant.</p>
+
+            </div>
+
+            <span class="message-time">
+                Now
+            </span>
+
+        </div>
+    `;
+
+
+    /*
+     * Insert the welcome message
+     * before the static welcome section.
+     */
+
+    if (chatMessages) {
+
+        const welcomeBlock =
+            chatMessages.querySelector(
+                ".welcome-block"
+            );
+
+        if (welcomeBlock) {
+
+            chatMessages.insertBefore(
+                welcomeMessage,
+                welcomeBlock
+            );
+
+        } else {
+
+            chatMessages.appendChild(
+                welcomeMessage
             );
 
         }
 
-
-        /*
-         * Reset profile.
-         */
-
-        if (profileCutoff) {
-
-            profileCutoff.textContent =
-                "—";
-
-        }
+    }
 
 
-        if (profileCommunity) {
+    /*
+     * ---------------------------------------------
+     * Reset profile
+     * ---------------------------------------------
+     */
 
-            profileCommunity.textContent =
-                "—";
+    if (profileCutoff) {
 
-        }
+        profileCutoff.textContent =
+            "—";
 
-
-        if (profileBranch) {
-
-            profileBranch.textContent =
-                "—";
-
-        }
+    }
 
 
-        /*
-         * Reset progress.
-         */
+    if (profileCommunity) {
 
-        [
-            progressCutoff,
-            progressCommunity,
-            progressBranch,
-            progressResults
+        profileCommunity.textContent =
+            "—";
 
-        ].forEach(step => {
+    }
+
+
+    if (profileBranch) {
+
+        profileBranch.textContent =
+            "—";
+
+    }
+
+
+    /*
+     * ---------------------------------------------
+     * Reset counselling progress
+     * ---------------------------------------------
+     */
+
+    [
+        progressCutoff,
+        progressCommunity,
+        progressBranch,
+        progressResults
+
+    ].forEach(
+        step => {
 
             step?.classList.remove(
                 "completed",
                 "current"
             );
 
-        });
+        }
+    );
 
 
-        /*
-         * Reset Robin.
-         */
+    /*
+     * ---------------------------------------------
+     * Reset Robin
+     * ---------------------------------------------
+     */
 
-        setRobinState(
-            "idle"
-        );
+    setRobinState(
+        "idle"
+    );
 
 
-        /*
-         * Clear input.
-         */
+    /*
+     * ---------------------------------------------
+     * Clear input
+     * ---------------------------------------------
+     */
+
+    if (messageInput) {
 
         messageInput.value = "";
-
-
         messageInput.focus();
 
     }
 
-
+}
+    
     /* =====================================================
-       RESET BUTTON
-    ===================================================== */
+   RESET BUTTON
+===================================================== */
 
-    if (resetButton) {
+if (resetButton) {
 
-        resetButton.addEventListener(
-            "click",
-            () => {
+    resetButton.addEventListener(
+        "click",
+        async () => {
 
-                if (isProcessing) {
+            /*
+             * Don't reset while a message is
+             * currently being processed.
+             */
 
-                    return;
+            if (isProcessing) {
+                return;
+            }
 
-                }
+
+            /*
+             * Confirm reset.
+             */
+
+            const confirmed =
+                window.confirm(
+                    "Reset your TNEA conversation?"
+                );
 
 
-                const confirmed =
-                    window.confirm(
-                        "Reset your TNEA conversation?"
+            if (!confirmed) {
+                return;
+            }
+
+
+            try {
+
+                /*
+                 * Reset BACKEND conversation state.
+                 */
+
+                const response =
+                    await fetch(
+                        "/reset",
+                        {
+                            method: "POST"
+                        }
                     );
 
 
-                if (!confirmed) {
+                /*
+                 * Read backend response.
+                 */
 
-                    return;
+                const data =
+                    await response.json();
+
+
+                /*
+                 * Backend reset failed.
+                 */
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error ||
+                        "Unable to reset the conversation."
+                    );
 
                 }
 
 
+                /*
+                 * Reset FRONTEND state
+                 * only after backend reset succeeds.
+                 */
+
                 resetFrontend();
 
+
+                /*
+                 * Keep the frontend profile
+                 * synchronized with backend.
+                 */
+
+                if (data.state) {
+
+                    updateProfile(
+                        data.state
+                    );
+
+                    updateProgress(
+                        data.state
+                    );
+
+                }
+
+
+                console.log(
+                    "TNEA conversation reset successfully."
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Reset error:",
+                    error
+                );
+
+                alert(
+                    "Unable to reset the conversation. Please try again."
+                );
+
             }
-        );
 
-    }
+        }
+    );
 
+}
 
     /* =====================================================
        UPDATE PROFILE
@@ -1174,9 +1360,9 @@
 
     }
 
-        /* =====================================================
-       UPDATE PROGRESS
-    ===================================================== */
+    /* =====================================================
+   UPDATE PROGRESS
+===================================================== */
 
     function updateProgress(state) {
 
@@ -1270,9 +1456,9 @@
         }
 
     }
-        /* =====================================================
-       THEME TOGGLE
-    ===================================================== */
+    /* =====================================================
+   THEME TOGGLE
+===================================================== */
 
     if (themeButton) {
 
@@ -1524,14 +1710,9 @@
     );
 
 
-    console.log(
-        "Robin images:",
-        robinImages
-    );
-
 
     /* =====================================================
        END DOMContentLoaded
     ===================================================== */
 
-    
+});

@@ -1954,3 +1954,267 @@ body {
     }
 
 }
+/* =====================================================
+   ROBIN SINGLE-IMAGE STATE
+   ===================================================== */
+
+.robin-image-container {
+    position: relative;
+    overflow: hidden;
+    background-image: none !important;
+}
+
+
+.robin-image-container::before,
+.robin-image-container::after {
+    content: none !important;
+    display: none !important;
+    background-image: none !important;
+}
+
+
+.robin-character {
+    position: relative;
+    display: block;
+    background-image: none !important;
+    opacity: 1 !important;
+}
+
+/* =====================================================
+   ROBIN IMAGE TRANSITION
+   ===================================================== */
+
+.robin-character {
+    display: block;
+    opacity: 1;
+    transition: opacity 0.25s ease-in-out;
+}
+
+/* =====================================================
+   ROBIN CHARACTER ANIMATIONS
+   ===================================================== */
+
+.robin-character {
+
+    display: block;
+
+    transform-origin: center bottom;
+
+}
+
+
+/* =====================================================
+   IDLE
+   ===================================================== */
+
+.robin-idle {
+
+    animation:
+        robin-breathe
+        3.5s
+        ease-in-out
+        infinite;
+
+}
+
+
+/* =====================================================
+   THINKING
+   ===================================================== */
+
+.robin-thinking {
+
+    animation:
+        robin-thinking
+        1.8s
+        ease-in-out
+        infinite;
+
+}
+
+
+/* =====================================================
+   HAPPY
+   ===================================================== */
+
+.robin-happy {
+
+    animation:
+        robin-happy
+        0.8s
+        ease-in-out
+        2;
+
+}
+
+
+/* =====================================================
+   ERROR
+   ===================================================== */
+
+.robin-error {
+
+    animation:
+        robin-error
+        0.45s
+        ease-in-out
+        2;
+
+}
+
+
+/* =====================================================
+   IDLE BREATHING
+   ===================================================== */
+
+@keyframes robin-breathe {
+
+    0% {
+
+        transform:
+            translateY(0)
+            scale(1);
+
+    }
+
+    50% {
+
+        transform:
+            translateY(-4px)
+            scale(1.01);
+
+    }
+
+    100% {
+
+        transform:
+            translateY(0)
+            scale(1);
+
+    }
+
+}
+
+
+/* =====================================================
+   THINKING
+   ===================================================== */
+
+@keyframes robin-thinking {
+
+    0% {
+
+        transform:
+            translateY(0)
+            rotate(0deg);
+
+    }
+
+    25% {
+
+        transform:
+            translateY(-3px)
+            rotate(-0.5deg);
+
+    }
+
+    50% {
+
+        transform:
+            translateY(-6px)
+            rotate(0.5deg);
+
+    }
+
+    75% {
+
+        transform:
+            translateY(-3px)
+            rotate(-0.3deg);
+
+    }
+
+    100% {
+
+        transform:
+            translateY(0)
+            rotate(0deg);
+
+    }
+
+}
+
+
+/* =====================================================
+   HAPPY
+   ===================================================== */
+
+@keyframes robin-happy {
+
+    0% {
+
+        transform:
+            scale(1);
+
+    }
+
+    50% {
+
+        transform:
+            scale(1.025)
+            translateY(-5px);
+
+    }
+
+    100% {
+
+        transform:
+            scale(1);
+
+    }
+
+}
+
+
+/* =====================================================
+   ERROR
+   ===================================================== */
+
+@keyframes robin-error {
+
+    0% {
+
+        transform:
+            translateX(0);
+
+    }
+
+    25% {
+
+        transform:
+            translateX(-4px);
+
+    }
+
+    50% {
+
+        transform:
+            translateX(4px);
+
+    }
+
+    75% {
+
+        transform:
+            translateX(-3px);
+
+    }
+
+    100% {
+
+        transform:
+            translateX(0);
+
+    }
+
+}

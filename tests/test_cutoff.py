@@ -1,91 +1,81 @@
 from src.chatbot import TNEAChatbot
 
 
-def run_test(bot, message):
-    print("=" * 70)
-    print(f"USER:\n{message}")
-    print()
-    
-    response = bot.process_message(message)
+def test_cse_cutoff_lookup():
+    bot = TNEAChatbot()
 
-    print("BOT:")
-    print(response)
-    print()
+    response = bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-    print("STATE:")
-    print(bot.state)
-    print()
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "cse"
 
 
-# ==========================================================
-# TEST 1
-# Branch only
-# ==========================================================
+def test_cutoff_followed_by_bc():
+    bot = TNEAChatbot()
 
-print("\nTEST 1: CSE cutoff lookup")
-print("=" * 70)
+    first_response = bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-bot = TNEAChatbot()
+    assert bot.state.get("branch") == "cse"
 
-run_test(
-    bot,
-    "What is the cutoff for CSE?"
-)
+    second_response = bot.process_message("BC")
 
-
-# ==========================================================
-# TEST 2
-# Give community
-# ==========================================================
-
-print("\nTEST 2: Give BC")
-print("=" * 70)
-
-run_test(
-    bot,
-    "BC"
-)
+    assert isinstance(second_response, str)
+    assert second_response.strip() != ""
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("branch") == "cse"
 
 
-# ==========================================================
-# TEST 3
-# Change community
-# ==========================================================
+def test_change_community_to_mbc():
+    bot = TNEAChatbot()
 
-print("\nTEST 3: Change to MBC")
-print("=" * 70)
+    bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-run_test(
-    bot,
-    "What about MBC?"
-)
+    bot.process_message("BC")
 
+    response = bot.process_message(
+        "What about MBC?"
+    )
 
-# ==========================================================
-# TEST 4
-# Change branch
-# ==========================================================
-
-print("\nTEST 4: Change branch to ECE")
-print("=" * 70)
-
-run_test(
-    bot,
-    "What is the ECE cutoff?"
-)
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("community") == "MBC"
+    assert bot.state.get("branch") == "cse"
 
 
-# ==========================================================
-# TEST 5
-# Explicit branch + community
-# ==========================================================
+def test_change_branch_to_ece():
+    bot = TNEAChatbot()
 
-print("\nTEST 5: Explicit query")
-print("=" * 70)
+    bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-bot = TNEAChatbot()
+    bot.process_message("BC")
 
-run_test(
-    bot,
-    "What is the BC cutoff for CSE?"
-)
+    response = bot.process_message(
+        "What is the ECE cutoff?"
+    )
+
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "ece"
+    assert bot.state.get("community") == "BC"
+
+
+def test_explicit_bc_cse_cutoff():
+    bot = TNEAChatbot()
+
+    response = bot.process_message(
+        "What is the BC cutoff for CSE?"
+    )
+
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "cse"
+    assert bot.state.get("community") == "BC"

@@ -1,208 +1,230 @@
 from src.chatbot import TNEAChatbot
 
 
-def run_test(bot, message):
-    print("\n" + "=" * 70)
-    print("USER:")
-    print(message)
+def test_greeting():
+    bot = TNEAChatbot()
 
-    response = bot.process_message(message)
+    response = bot.process_message("Hello")
 
-    print("\nBOT:")
-    print(response)
+    assert isinstance(response, str)
+    assert response.strip() != ""
 
-    print("\nSTATE:")
-    print(bot.state)
 
+def test_incomplete_recommendation():
+    bot = TNEAChatbot()
 
-bot = TNEAChatbot()
+    response = bot.process_message(
+        "I want CSE colleges"
+    )
 
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "cse"
 
-# ============================================================
-# TEST 1: Greeting
-# ============================================================
+    # Cutoff and community are required before recommendation.
+    assert bot.state.get("cutoff") is None
+    assert bot.state.get("community") is None
 
-print("\n# TEST 1: Greeting")
 
-run_test(
-    bot,
-    "Hello"
-)
+def test_cutoff_after_incomplete_recommendation():
+    bot = TNEAChatbot()
 
+    bot.process_message(
+        "I want CSE colleges"
+    )
 
-# ============================================================
-# TEST 2: Incomplete recommendation
-# ============================================================
+    response = bot.process_message("187")
 
-print("\n# TEST 2: Incomplete recommendation")
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("branch") == "cse"
 
-run_test(
-    bot,
-    "I want CSE colleges"
-)
 
+def test_invalid_community_does_not_overwrite_state():
+    bot = TNEAChatbot()
 
-# ============================================================
-# TEST 3: Give cutoff
-# ============================================================
+    bot.process_message(
+        "I want CSE colleges"
+    )
 
-print("\n# TEST 3: Give cutoff")
+    bot.process_message("187")
 
-run_test(
-    bot,
-    "187"
-)
+    response = bot.process_message("XYZ")
 
+    assert isinstance(response, str)
+    assert response.strip() != ""
 
-# ============================================================
-# TEST 4: Invalid community
-# ============================================================
+    # Invalid community must not become part of the state.
+    assert bot.state.get("community") is None
+    assert bot.state.get("branch") == "cse"
 
-print("\n# TEST 4: Invalid community")
 
-run_test(
-    bot,
-    "XYZ"
-)
+def test_valid_community_after_invalid_input():
+    bot = TNEAChatbot()
 
+    bot.process_message(
+        "I want CSE colleges"
+    )
 
-# ============================================================
-# TEST 5: Give valid community
-# ============================================================
+    bot.process_message("187")
+    bot.process_message("XYZ")
 
-print("\n# TEST 5: Give valid community")
+    response = bot.process_message("BC")
 
-run_test(
-    bot,
-    "BC"
-)
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("branch") == "cse"
 
 
-# ============================================================
-# TEST 6: Change branch
-# ============================================================
+def test_change_branch():
+    bot = TNEAChatbot()
 
-print("\n# TEST 6: Change branch")
+    bot.process_message(
+        "I want CSE colleges"
+    )
 
-run_test(
-    bot,
-    "What about ECE?"
-)
+    bot.process_message("187")
+    bot.process_message("BC")
 
+    response = bot.process_message(
+        "What about ECE?"
+    )
 
-# ============================================================
-# TEST 7: Change community
-# ============================================================
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "ece"
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("community") == "BC"
 
-print("\n# TEST 7: Change community")
 
-run_test(
-    bot,
-    "What about MBC?"
-)
+def test_change_community():
+    bot = TNEAChatbot()
 
+    bot.process_message(
+        "I want CSE colleges"
+    )
 
-# ============================================================
-# TEST 8: Complete recommendation in one message
-# ============================================================
+    bot.process_message("187")
+    bot.process_message("BC")
 
-print("\n# TEST 8: Complete recommendation")
+    response = bot.process_message(
+        "What about MBC?"
+    )
 
-bot = TNEAChatbot()
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("community") == "MBC"
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("branch") == "cse"
 
-run_test(
-    bot,
-    "Which colleges can I get with 190 BC CSE?"
-)
 
+def test_complete_recommendation_in_one_message():
+    bot = TNEAChatbot()
 
-# ============================================================
-# TEST 9: Cutoff lookup
-# ============================================================
+    response = bot.process_message(
+        "Which colleges can I get with 190 BC CSE?"
+    )
 
-print("\n# TEST 9: Cutoff lookup")
+    assert isinstance(response, str)
+    assert response.strip() != ""
 
-bot = TNEAChatbot()
+    assert bot.state.get("cutoff") == 190.0
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("branch") == "cse"
 
-run_test(
-    bot,
-    "What is the cutoff for CSE?"
-)
 
+def test_cutoff_lookup():
+    bot = TNEAChatbot()
 
-# ============================================================
-# TEST 10: Provide community for cutoff lookup
-# ============================================================
+    response = bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-print("\n# TEST 10: Provide community")
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "cse"
 
-run_test(
-    bot,
-    "MBC"
-)
 
+def test_community_for_cutoff_lookup():
+    bot = TNEAChatbot()
 
-# ============================================================
-# TEST 11: Change branch during cutoff lookup
-# ============================================================
+    bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-print("\n# TEST 11: Change branch during cutoff lookup")
+    response = bot.process_message("MBC")
 
-run_test(
-    bot,
-    "What about ECE?"
-)
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("community") == "MBC"
+    assert bot.state.get("branch") == "cse"
 
 
-# ============================================================
-# TEST 12: Branch search
-# ============================================================
+def test_change_branch_during_cutoff_lookup():
+    bot = TNEAChatbot()
 
-print("\n# TEST 12: Branch search")
+    bot.process_message(
+        "What is the cutoff for CSE?"
+    )
 
-bot = TNEAChatbot()
+    bot.process_message("MBC")
 
-run_test(
-    bot,
-    "What branches are available?"
-)
+    response = bot.process_message(
+        "What about ECE?"
+    )
 
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "ece"
+    assert bot.state.get("community") == "MBC"
 
-# ============================================================
-# TEST 13: College search
-# ============================================================
 
-print("\n# TEST 13: College search")
+def test_branch_search():
+    bot = TNEAChatbot()
 
-bot = TNEAChatbot()
+    response = bot.process_message(
+        "What branches are available?"
+    )
 
-run_test(
-    bot,
-    "Tell me about Anna University"
-)
+    assert isinstance(response, str)
+    assert response.strip() != ""
 
 
-# ============================================================
-# TEST 14: Generic college information
-# ============================================================
+def test_college_search():
+    bot = TNEAChatbot()
 
-print("\n# TEST 14: Generic college information")
+    response = bot.process_message(
+        "Tell me about Anna University"
+    )
 
-run_test(
-    bot,
-    "Give me college information"
-)
+    assert isinstance(response, str)
+    assert response.strip() != ""
 
 
-# ============================================================
-# TEST 15: Random input
-# ============================================================
+def test_generic_college_information():
+    bot = TNEAChatbot()
 
-print("\n# TEST 15: Random input")
+    response = bot.process_message(
+        "Give me college information"
+    )
 
-bot = TNEAChatbot()
+    assert isinstance(response, str)
+    assert response.strip() != ""
 
-run_test(
-    bot,
-    "asdfghjkl"
-)
+
+def test_random_input():
+    bot = TNEAChatbot()
+
+    response = bot.process_message(
+        "asdfghjkl"
+    )
+
+    assert isinstance(response, str)
+    assert response.strip() != ""
+
+    # Random input should not crash the chatbot.
+    assert bot.state.get("cutoff") is None
+    assert bot.state.get("community") is None
+    assert bot.state.get("branch") is None

@@ -1,4 +1,3 @@
-from email.mime import message
 
 from flask import Flask, render_template, request, jsonify
 
@@ -51,8 +50,10 @@ def chat():
 
     data = request.get_json()
 
-    if not data:
-        return jsonify({"error": "No JSON data received."}), 400
+    if not isinstance(data, dict):
+        return jsonify({
+            "error": "JSON body must be an object."
+        }), 400
 
     message = data.get("message")
 
