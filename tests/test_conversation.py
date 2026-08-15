@@ -1,38 +1,63 @@
 from src.conversation import ConversationState
 
 
-state = ConversationState()
+def test_initial_state():
+    state = ConversationState()
+
+    assert state.get("branch") is None
+    assert state.get("cutoff") is None
+    assert state.get("community") is None
 
 
-print("INITIAL STATE:")
-print(state)
+def test_branch_update():
+    state = ConversationState()
+
+    state.update({
+        "branch": "CSE"
+    })
+
+    assert state.get("branch") == "CSE"
 
 
-state.update({
-    "branch": "CSE"
-})
+def test_cutoff_update():
+    state = ConversationState()
 
-print("\nAFTER BRANCH:")
-print(state)
+    state.update({
+        "cutoff": 187
+    })
 
-
-state.update({
-    "cutoff": 187
-})
-
-print("\nAFTER CUTOFF:")
-print(state)
+    assert state.get("cutoff") == 187
 
 
-state.update({
-    "community": "BC"
-})
+def test_community_update():
+    state = ConversationState()
 
-print("\nAFTER COMMUNITY:")
-print(state)
+    state.update({
+        "community": "BC"
+    })
+
+    assert state.get("community") == "BC"
 
 
-print("\nMISSING:")
-print(
-    state.missing_for_recommendation()
-)
+def test_complete_recommendation_state():
+    state = ConversationState()
+
+    state.update({
+        "branch": "CSE",
+        "cutoff": 187,
+        "community": "BC"
+    })
+
+    missing = state.missing_for_recommendation()
+
+    assert missing == []
+
+
+def test_missing_recommendation_fields():
+    state = ConversationState()
+
+    missing = state.missing_for_recommendation()
+
+    assert "cutoff" in missing
+    assert "community" in missing
+    assert "branch" in missing

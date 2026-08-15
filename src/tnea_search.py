@@ -1,3 +1,5 @@
+from re import search
+
 import pandas as pd
 
 DATA_FILE = "data/2025 cutoff_data_clean.csv"
@@ -224,6 +226,101 @@ class TNEASearch:
         results = self.df[self.df["branch"] == resolved]
 
         return results[["college_name", "branch"]].drop_duplicates()
+    
+        # ==================================================
+    # GET COLLEGE BY CODE
+    # ==================================================
+
+    def get_college_by_code(self, college_code):
+
+        try:
+            college_code = int(college_code)
+
+        except (TypeError, ValueError):
+            return pd.DataFrame()
+
+        results = self.df[
+            self.df["college_code"] == college_code
+        ].copy()
+
+        return results
+    
+        # ==================================================
+    # COMPARE COLLEGES
+    # ==================================================
+
+    def compare_colleges(
+        self,
+        college_code_1,
+        college_code_2,
+        branch,
+        community
+    ):
+
+        community = str(community).upper().strip()
+
+        if community not in self.community_map:
+            raise ValueError(
+                "Invalid community. "
+                "Use OC, BC, BCM, MBC, SC, SCA or ST."
+            )
+
+        column = self.community_map[community]
+
+        resolved_branch = self.resolve_branch(branch)
+
+        if resolved_branch is None:
+            return pd.DataFrame()
+
+        college_1 = self.get_college_by_code(
+            college_code_1
+        )
+
+        college_2 = self.get_college_by_code(
+            college_code_2
+        )
+
+        if college_1.empty or college_2.empty:
+            return pd.DataFrame()
+
+        college_1 = college_1[
+            college_1["branch"] == resolved_branch
+        ].copy()
+
+        college_2 = college_2[
+            college_2["branch"] == resolved_branch
+        ].copy()
+
+        college_1 = college_1[
+            college_1[column].notna()
+        ]
+
+        college_2 = college_2[
+            college_2[column].notna()
+        ]
+
+        if college_1.empty or college_2.empty:
+            return pd.DataFrame()
+
+        result_1 = college_1.iloc[0]
+        result_2 = college_2.iloc[0]
+
+        return pd.DataFrame([
+            {
+                "college_code": result_1["college_code"],
+                "college_name": result_1["college_name"],
+                "branch": result_1["branch"],
+                "community": community,
+                "cutoff": result_1[column],
+            },
+            {
+                "college_code": result_2["college_code"],
+                "college_name": result_2["college_name"],
+                "branch": result_2["branch"],
+                "community": community,
+                "cutoff": result_2[column],
+            }
+        ])
 
     # ==================================================
     # GET CUTOFF
@@ -484,22 +581,37 @@ class TNEASearch:
                 selected.append(index)
                 selected_indices.add(index)
 
-        # ----------------------------------------------
+                # ----------------------------------------------
         # Fill remaining slots if a category has
         # insufficient colleges
         # ----------------------------------------------
 
         if len(selected) < limit:
-            remaining = results[
-                ~results.index.isin(selected_indices)
+
+            # Only use eligible recommendation categories.
+            # Do NOT include colleges whose historical
+            # cutoff was higher than the student's cutoff.
+
+            eligible_results = results[
+                results["category"] !=
+                "More competitive than 2025 cutoff"
+            ]
+
+            remaining = eligible_results[
+                ~eligible_results.index.isin(
+                    selected_indices
+                )
             ]
 
             remaining_slots = limit - len(selected)
 
             for index in remaining.index[:remaining_slots]:
-                selected.append(index)
-                selected_indices.add(index)
 
+                selected.append(index)
+
+                selected_indices.add(index)
+            selected_indices.add(index)
+            
         # ----------------------------------------------
         # Limit results
         # ----------------------------------------------
@@ -549,3 +661,5 @@ class TNEASearch:
         ].rename(
             columns={column: "cutoff"}
         )
+
+    
