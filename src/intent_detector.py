@@ -23,6 +23,26 @@ class TNEAIntentDetector:
 
             if re.search(pattern, text):
                 return "cutoff_lookup"
+        
+                # ------------------------------------------
+        # DISTRICT SEARCH
+        # ------------------------------------------
+
+        district_patterns = [
+            r"colleges.*in.*district",
+            r"colleges.*in\s+\w+",
+            r"college.*in\s+\w+",
+            r"show.*colleges.*in",
+            r"find.*colleges.*in",
+            r"engineering colleges.*in",
+            r"colleges.*located.*in",
+            r"colleges.*near",
+        ]
+
+        for pattern in district_patterns:
+
+            if re.search(pattern, text):
+                return "district_search"
 
         # ------------------------------------------
         # RECOMMENDATION

@@ -1,3 +1,5 @@
+from urllib import response
+
 from src.tnea_search import TNEASearch
 from src.query_parser import TNEAQueryParser
 from src.intent_detector import TNEAIntentDetector
@@ -88,6 +90,8 @@ class TNEAChatbot:
 
         elif intent == "college_search":
             return self.handle_college_search(message)
+        elif intent == "district_search":
+            return self.handle_district_search(message)
 
         return self.handle_unknown()
 
@@ -106,6 +110,7 @@ class TNEAChatbot:
         cutoff = self.state.get("cutoff")
         community = self.state.get("community")
         branch = self.state.get("branch")
+        district = self.state.get("district")
 
         resolved_branch = self.search.resolve_branch(branch)
 
@@ -119,6 +124,7 @@ class TNEAChatbot:
             cutoff=cutoff,
             community=community,
             branch=branch,
+            district=district,
             limit=10,
         )
 
@@ -364,6 +370,54 @@ class TNEAChatbot:
             response.append(f"   College code: {row['college_code']}")
 
         return "\n".join(response)
+    
+    
+        # ==================================================
+    # DISTRICT SEARCH
+    # ==================================================
+
+    def handle_district_search(self, message):
+        self.pending_intent = None
+        self.last_intent = "district_search"
+
+        query = message.lower().strip()
+
+        phrases = [
+            "show colleges in",
+            "find colleges in",
+            "engineering colleges in",
+            "colleges in",
+            "college in",
+            "colleges located in",
+            "colleges near",
+        ]
+
+        for phrase in phrases:
+            query = query.replace(phrase, "")
+
+        query = query.strip(" ?.,:")
+
+        if not query:
+            return "Which district would you like to search?"
+
+        results = self.search.search_district(query)
+
+        if results.empty:
+            return f"I couldn't find any colleges in '{query}'."
+
+        response = [
+            f"Colleges in {query.title()}:",
+            "",
+        ]
+
+        for index, (_, row) in enumerate(
+            results.iterrows(),
+            start=1,
+        ):
+            response.append(f"{index}. {row['college_name']}")
+            response.append(f"   College code: {row['college_code']}")
+
+        return "\n".join(response)
 
     # ==================================================
     # UNKNOWN
@@ -386,90 +440,79 @@ class TNEAChatbot:
     # ==================================================
 
     def format_response(
-        self,
-        cutoff,
-        community,
-        branch,
-        recommendations,
-    ):
+    self,
+    cutoff,
+    community,
+    branch,
+    recommendations,
+):
         response = []
 
-        response.append("TNEA COLLEGE RECOMMENDATIONS")
-        response.append("================================")
+        response.append(
+            f"I found {len(recommendations)} colleges matching your preferences."
+        )
         response.append("")
 
-        response.append("YOUR PROFILE")
-        response.append(f"• Cutoff    : {float(cutoff):.1f}")
-        response.append(f"• Community : {community}")
-        response.append(f"• Branch    : {branch}")
+        response.append("Your profile")
+        response.append("----------------")
+        response.append(f"Cutoff    : {float(cutoff):.1f}")
+        response.append(f"Community : {community}")
+        response.append(f"Branch    : {branch}")
+    
+        district = self.state.get("district")
+        
+        if district:
+            response.append(f"District  : {district}")
+            
         response.append("")
-
-        categories = [
-            "Strong historical option",
-            "Good historical option",
-            "Borderline historical option",
-            "Stretch option",
-            "More competitive than 2025 cutoff",
-        ]
-
-        category_titles = {
-            "Strong historical option": "STRONG HISTORICAL MATCHES",
-            "Good historical option": "GOOD HISTORICAL MATCHES",
-            "Borderline historical option": "BORDERLINE HISTORICAL MATCHES",
-            "Stretch option": "STRETCH OPTIONS",
-            "More competitive than 2025 cutoff": "MORE COMPETITIVE THAN 2025",
-        }
-
-        displayed = False
-
-        for category in categories:
-            category_rows = recommendations[recommendations["category"] == category]
-
-            if category_rows.empty:
-                continue
-
-            displayed = True
-            response.append(category_titles[category])
-            response.append("--------------------------------")
-
-            for index, (_, row) in enumerate(
-                category_rows.iterrows(),
-                start=1,
-            ):
-                response.append(f"{index}. {row['college_name']}")
-                response.append(f"   2025 cutoff : {float(row['cutoff']):.1f}")
-                response.append(f"   Your margin  : {float(row['margin']):+.1f}")
-                response.append("")
-
-        if not displayed:
+        response.append("Colleges you can consider")
+        response.append("----------------")
+    
+        if recommendations.empty:
             response.append(
-                "No suitable historical matches were found " "for this combination."
+                "I couldn't find colleges matching all of your requirements."
             )
+            return "\n".join(response)
+        
+        for index, (_, row) in enumerate(
+            recommendations.iterrows(),
+            start=1,
+        ):
+            college_name = str(row["college_name"]).strip()
+            
+            if "," in college_name:
+                college_name = college_name.split(",")[0].strip()
+                
+            college_name = college_name.replace(
+            " (Autonomous)",
+            ""
+        ).strip()
+            
+            response.append(
+            f"{index}. {college_name}"
+        )
+            
+            response.append(
+            f"   College code: {row['college_code']}"
+        )
+            response.append(
+            f"   2025 {community} cutoff: "
+            f"{float(row['cutoff']):.1f}"
+        )
             response.append("")
-
-        response.append("HOW TO READ THIS")
-        response.append("--------------------------------")
-        response.append("Your margin = your cutoff - 2025 historical cutoff.")
-        response.append(
-            "A positive margin means your cutoff was higher " "than the 2025 cutoff."
-        )
+            
+            
+        response.append("----------------")
         response.append("")
-
-        response.append("IMPORTANT")
-        response.append("--------------------------------")
         response.append(
-            "These recommendations are based on 2025 historical " "TNEA cutoff data."
+            "These results are based on 2025 historical TNEA cutoff data."
         )
         response.append(
-            "They are NOT admission guarantees for the upcoming counselling."
-        )
-        response.append(
-            "Actual cutoffs can change depending on seats, demand, "
-            "community, and counselling trends."
+            "They are not admission guarantees for upcoming counselling."
         )
 
         return "\n".join(response)
-
+            
     # ==================================================
     # RESET CONVERSATION
     # ==================================================
