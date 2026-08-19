@@ -6,6 +6,7 @@ class ConversationState:
             "cutoff": None,
             "community": None,
             "branch": None,
+            "district": None,
             "college": None
         }
 
@@ -37,6 +38,7 @@ class ConversationState:
         required = [
             "cutoff",
             "community",
+            "district",
             "branch"
         ]
 
@@ -56,7 +58,9 @@ class ConversationState:
             "cutoff": None,
             "community": None,
             "branch": None,
-            "college": None
+            "district": None,
+            "college": None,
+            
         }
         
         

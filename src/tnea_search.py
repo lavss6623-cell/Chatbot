@@ -1,3 +1,4 @@
+from email.mime import text
 from re import search
 
 import pandas as pd
@@ -10,11 +11,8 @@ class TNEASearch:
     def __init__(self, data_file=DATA_FILE):
 
         self.df = pd.read_csv(data_file)
-        
-        self.df.columns = (
-            self.df.columns
-           .str.strip()
-    )
+
+        self.df.columns = self.df.columns.str.strip()
 
         # ----------------------------------------------
         # Clean text columns
@@ -26,6 +24,102 @@ class TNEASearch:
 
         self.df["branch"] = self.df["branch"].fillna("").astype(str).str.strip()
 
+        # ----------------------------------------------
+        # Tamil Nadu districts
+        # ----------------------------------------------
+
+        self.districts = [
+            "Ariyalur",
+            "Chengalpattu",
+            "Chennai",
+            "Coimbatore",
+            "Cuddalore",
+            "Dharmapuri",
+            "Dindigul",
+            "Erode",
+            "Kallakurichi",
+            "Kancheepuram",
+            "Karur",
+            "Krishnagiri",
+            "Madurai",
+            "Mayiladuthurai",
+            "Nagapattinam",
+            "Namakkal",
+            "Nilgiris",
+            "Perambalur",
+            "Pudukkottai",
+            "Ramanathapuram",
+            "Ranipet",
+            "Salem",
+            "Sivaganga",
+            "Tenkasi",
+            "Thanjavur",
+            "Theni",
+            "Thoothukudi",
+            "Tiruchirappalli",
+            "Tirunelveli",
+            "Tirupathur",
+            "Tiruppur",
+            "Tiruvallur",
+            "Thiruvannamalai",
+            "Tiruvarur",
+            "Vellore",
+            "Villupuram",
+            "Virudhunagar",
+            "Kanyakumari",
+        ]
+
+        self.district_overrides = {
+            5901: "Sivaganga",
+            5012: "Sivaganga",
+            3018: "Nagapattinam",
+            1102: "Tiruvallur",
+            1107: "Tiruvallur",
+            1112: "Tiruvallur",
+            1113: "Tiruvallur",
+            1116: "Tiruvallur",
+            1118: "Tiruvallur",
+            1122: "Tiruvallur",
+            1124: "Tiruvallur",
+            1126: "Tiruvallur",
+            1128: "Tiruvallur",
+            1150: "Tiruvallur",
+            1140: "Kancheepuram",
+            1207: "Kancheepuram",
+            1209: "Kancheepuram",
+            1212: "Kancheepuram",
+            1219: "Kancheepuram",
+            1226: "Kancheepuram",
+            1229: "Tiruvallur",
+            1230: "Kancheepuram",
+            1235: "Kancheepuram",
+            1241: "Tiruvallur",
+            1315: "Kancheepuram",
+            1322: "Kancheepuram",
+            1335: "Kancheepuram",
+            1413: "Kancheepuram",
+            1444: "Kancheepuram",
+            1503: "Thiruvannamalai",
+            1512: "Thiruvannamalai",
+            1513: "Thiruvannamalai",
+            1517: "Kancheepuram",
+            1529: "Thiruvannamalai",
+            2651: "Tiruppur",
+            2717: "Tiruppur",
+            3803: "Tiruvarur",
+            3821: "Tiruvarur",
+            4933: "Thoothukudi",
+            4953: "Tirunelveli",
+            4962: "Thoothukudi",
+            4978: "Kanyakumari",
+            4981: "Kanyakumari",
+            5502: "Sivaganga",
+            5912: "Sivaganga",
+        }
+        self.df["district"] = self.df.apply(
+            lambda row: self.extract_district(row["college_name"], row["college_code"]),
+            axis=1,
+        )
         # ----------------------------------------------
         # Community -> DataFrame column
         # ----------------------------------------------
@@ -198,6 +292,47 @@ class TNEASearch:
 
         return None
 
+        # ==================================================
+
+    # EXTRACT DISTRICT
+    # ==================================================
+
+    def extract_district(self, college_name, college_code=None):
+
+        # ----------------------------------------------
+        # 1. Dataset-specific corrections
+        # ----------------------------------------------
+
+        if college_code in self.district_overrides:
+            return self.district_overrides[college_code]
+
+        text = str(college_name).strip()
+        lower_text = text.lower()
+
+        # ----------------------------------------------
+        # 2. Explicit "District" matching
+        # ----------------------------------------------
+
+        for district in self.districts:
+
+            pattern = rf"\b{district.lower()}\s+district\b"
+
+            if search(pattern, lower_text):
+                return district
+
+        # ----------------------------------------------
+        # 3. Fallback district matching
+        # ----------------------------------------------
+
+        for district in self.districts:
+
+            pattern = rf"\b{district.lower()}\b"
+
+            if search(pattern, lower_text):
+                return district
+
+        return None
+
     # ==================================================
     # SEARCH COLLEGE
     # ==================================================
@@ -226,8 +361,37 @@ class TNEASearch:
         results = self.df[self.df["branch"] == resolved]
 
         return results[["college_name", "branch"]].drop_duplicates()
-    
+
         # ==================================================
+
+    # SEARCH DISTRICT
+    # ==================================================
+
+    def search_district(self, district):
+
+        query = str(district).strip().lower()
+
+        if not query:
+            return pd.DataFrame(
+                columns=[
+                    "college_code",
+                    "college_name",
+                    "district",
+                ]
+            )
+
+        results = self.df[self.df["district"].str.lower() == query].copy()
+
+        return results[
+            [
+                "college_code",
+                "college_name",
+                "district",
+            ]
+        ].drop_duplicates("college_code")
+
+        # ==================================================
+
     # GET COLLEGE BY CODE
     # ==================================================
 
@@ -239,30 +403,22 @@ class TNEASearch:
         except (TypeError, ValueError):
             return pd.DataFrame()
 
-        results = self.df[
-            self.df["college_code"] == college_code
-        ].copy()
+        results = self.df[self.df["college_code"] == college_code].copy()
 
         return results
-    
+
         # ==================================================
+
     # COMPARE COLLEGES
     # ==================================================
 
-    def compare_colleges(
-        self,
-        college_code_1,
-        college_code_2,
-        branch,
-        community
-    ):
+    def compare_colleges(self, college_code_1, college_code_2, branch, community):
 
         community = str(community).upper().strip()
 
         if community not in self.community_map:
             raise ValueError(
-                "Invalid community. "
-                "Use OC, BC, BCM, MBC, SC, SCA or ST."
+                "Invalid community. " "Use OC, BC, BCM, MBC, SC, SCA or ST."
             )
 
         column = self.community_map[community]
@@ -272,32 +428,20 @@ class TNEASearch:
         if resolved_branch is None:
             return pd.DataFrame()
 
-        college_1 = self.get_college_by_code(
-            college_code_1
-        )
+        college_1 = self.get_college_by_code(college_code_1)
 
-        college_2 = self.get_college_by_code(
-            college_code_2
-        )
+        college_2 = self.get_college_by_code(college_code_2)
 
         if college_1.empty or college_2.empty:
             return pd.DataFrame()
 
-        college_1 = college_1[
-            college_1["branch"] == resolved_branch
-        ].copy()
+        college_1 = college_1[college_1["branch"] == resolved_branch].copy()
 
-        college_2 = college_2[
-            college_2["branch"] == resolved_branch
-        ].copy()
+        college_2 = college_2[college_2["branch"] == resolved_branch].copy()
 
-        college_1 = college_1[
-            college_1[column].notna()
-        ]
+        college_1 = college_1[college_1[column].notna()]
 
-        college_2 = college_2[
-            college_2[column].notna()
-        ]
+        college_2 = college_2[college_2[column].notna()]
 
         if college_1.empty or college_2.empty:
             return pd.DataFrame()
@@ -305,22 +449,24 @@ class TNEASearch:
         result_1 = college_1.iloc[0]
         result_2 = college_2.iloc[0]
 
-        return pd.DataFrame([
-            {
-                "college_code": result_1["college_code"],
-                "college_name": result_1["college_name"],
-                "branch": result_1["branch"],
-                "community": community,
-                "cutoff": result_1[column],
-            },
-            {
-                "college_code": result_2["college_code"],
-                "college_name": result_2["college_name"],
-                "branch": result_2["branch"],
-                "community": community,
-                "cutoff": result_2[column],
-            }
-        ])
+        return pd.DataFrame(
+            [
+                {
+                    "college_code": result_1["college_code"],
+                    "college_name": result_1["college_name"],
+                    "branch": result_1["branch"],
+                    "community": community,
+                    "cutoff": result_1[column],
+                },
+                {
+                    "college_code": result_2["college_code"],
+                    "college_name": result_2["college_name"],
+                    "branch": result_2["branch"],
+                    "community": community,
+                    "cutoff": result_2[column],
+                },
+            ]
+        )
 
     # ==================================================
     # GET CUTOFF
@@ -409,13 +555,7 @@ class TNEASearch:
     # RECOMMEND COLLEGES
     # ==================================================
 
-    def recommend_colleges(
-        self,
-        cutoff,
-        community,
-        branch,
-        limit=10
-    ):
+    def recommend_colleges(self, cutoff, community, branch, district, limit=10):
         """
         Recommend colleges based on student's cutoff,
         community and branch using 2025 historical data.
@@ -437,8 +577,7 @@ class TNEASearch:
 
         if community not in self.community_map:
             raise ValueError(
-                "Invalid community. "
-                "Use OC, BC, BCM, MBC, SC, SCA or ST."
+                "Invalid community. " "Use OC, BC, BCM, MBC, SC, SCA or ST."
             )
 
         column = self.community_map[community]
@@ -465,17 +604,17 @@ class TNEASearch:
         # Find exact branch
         # ----------------------------------------------
 
-        results = self.df[
-            self.df["branch"] == resolved_branch
-        ].copy()
+        # results = self.df[self.df["branch"] == resolved_branch].copy()
 
+        results = self.df[
+            (self.df["district"].str.lower() == str(district).lower().strip())
+            & (self.df["branch"] == resolved_branch)
+        ].copy()
         # ----------------------------------------------
         # Remove missing cutoffs
         # ----------------------------------------------
 
-        results = results[
-            results[column].notna()
-        ].copy()
+        results = results[results[column].notna()].copy()
 
         if results.empty:
             return pd.DataFrame(
@@ -489,177 +628,222 @@ class TNEASearch:
                 ]
             )
 
-        # ----------------------------------------------
-        # Calculate margin
-        #
-        # Positive margin:
-        # student's cutoff is above historical cutoff
-        #
-        # Negative margin:
-        # student's cutoff is below historical cutoff
-        # ----------------------------------------------
+        # # ----------------------------------------------
+        # # Calculate margin
+        # #
+        # # Positive margin:
+        # # student's cutoff is above historical cutoff
+        # #
+        # # Negative margin:
+        # # student's cutoff is below historical cutoff
+        # # ----------------------------------------------
 
-        results["margin"] = cutoff - results[column]
+        # results["margin"] = cutoff - results[column]
 
-        # ----------------------------------------------
-        # Classification
-        # ----------------------------------------------
+        # # ----------------------------------------------
+        # # Classification
+        # # ----------------------------------------------
 
-        def classify(margin):
-            if margin >= 5:
-                return "Strong historical option"
-            elif margin >= 2:
-                return "Good historical option"
-            elif margin >= 0:
-                return "Borderline historical option"
-            elif margin >= -2:
-                return "Stretch option"
-            else:
-                return "More competitive than 2025 cutoff"
+        # def classify(margin):
+        #     if margin >= 5:
+        #         return "Strong historical option"
+        #     elif margin >= 2:
+        #         return "Good historical option"
+        #     elif margin >= 0:
+        #         return "Borderline historical option"
+        #     elif margin >= -2:
+        #         return "Stretch option"
+        #     else:
+        #         return "More competitive than 2025 cutoff"
 
-        results["category"] = results["margin"].apply(classify)
+        # results["category"] = results["margin"].apply(classify)
 
-        # ----------------------------------------------
-        # Category ranking
-        # ----------------------------------------------
+        # # ----------------------------------------------
+        # # Category ranking
+        # # ----------------------------------------------
 
-        category_order = {
-            "Strong historical option": 0,
-            "Good historical option": 1,
-            "Borderline historical option": 2,
-            "Stretch option": 3,
-            "More competitive than 2025 cutoff": 4,
-        }
+        # category_order = {
+        #     "Strong historical option": 0,
+        #     "Good historical option": 1,
+        #     "Borderline historical option": 2,
+        #     "Stretch option": 3,
+        #     "More competitive than 2025 cutoff": 4,
+        # }
 
-        results["category_rank"] = results["category"].map(
-            category_order
-        )
+        # results["category_rank"] = results["category"].map(category_order)
 
-        # ----------------------------------------------
-        # Distance from student's cutoff
-        # ----------------------------------------------
+        # # ----------------------------------------------
+        # # Distance from student's cutoff
+        # # ----------------------------------------------
 
-        results["absolute_difference"] = results[
-            "margin"
-        ].abs()
+        # results["absolute_difference"] = results["margin"].abs()
 
-        # ----------------------------------------------
-        # Sort by category and closeness
-        # ----------------------------------------------
+        # # ----------------------------------------------
+        # # Sort by category and closeness
+        # # ----------------------------------------------
 
-        results = results.sort_values(
-            by=["category_rank", "absolute_difference"],
-            ascending=[True, True],
-        )
+        # results = results.sort_values(
+        #     by=["category_rank", "absolute_difference"],
+        #     ascending=[True, True],
+        # )
 
-        # ----------------------------------------------
-        # Balanced recommendations
-        # ----------------------------------------------
-        # Prefer a spread of options instead of returning
-        # ten colleges from only one category.
+        # # ----------------------------------------------
+        # # Balanced recommendations
+        # # ----------------------------------------------
+        # # Prefer a spread of options instead of returning
+        # # ten colleges from only one category.
 
-        target_counts = {
-            "Strong historical option": 3,
-            "Good historical option": 3,
-            "Borderline historical option": 2,
-            "Stretch option": 2,
-        }
+        # target_counts = {
+        #     "Strong historical option": 3,
+        #     "Good historical option": 3,
+        #     "Borderline historical option": 2,
+        #     "Stretch option": 2,
+        # }
 
-        selected = []
-        selected_indices = set()
+        # selected = []
+        # selected_indices = set()
 
-        # ----------------------------------------------
-        # Select from preferred categories
-        # ----------------------------------------------
+        # # ----------------------------------------------
+        # # Select from preferred categories
+        # # ----------------------------------------------
 
-        for category, count in target_counts.items():
-            category_rows = results[
-                results["category"] == category
-            ]
+        # for category, count in target_counts.items():
+        #     category_rows = results[results["category"] == category]
 
-            for index in category_rows.index[:count]:
-                selected.append(index)
-                selected_indices.add(index)
+        #     for index in category_rows.index[:count]:
+        #         selected.append(index)
+        #         selected_indices.add(index)
+
+        #         # ----------------------------------------------
+        # # Fill remaining slots if a category has
+        # # insufficient colleges
+        # # ----------------------------------------------
+
+        # if len(selected) < limit:
+
+        #     # Only use eligible recommendation categories.
+        #     # Do NOT include colleges whose historical
+        #     # cutoff was higher than the student's cutoff.
+
+        #     eligible_results = results[
+        #         results["category"] != "More competitive than 2025 cutoff"
+        #     ]
+
+        #     remaining = eligible_results[~eligible_results.index.isin(selected_indices)]
+
+        #     remaining_slots = limit - len(selected)
+
+        #     for index in remaining.index[:remaining_slots]:
+
+        #         selected.append(index)
+
+        #         selected_indices.add(index)
+        #     selected_indices.add(index)
+
+        # # ----------------------------------------------
+        # # Limit results
+        # # ----------------------------------------------
+
+        # selected = selected[:limit]
+
+        # if not selected:
+        #     return pd.DataFrame(
+        #         columns=[
+        #             "college_code",
+        #             "college_name",
+        #             "branch",
+        #             "cutoff",
+        #             "margin",
+        #             "category",
+        #         ]
+        #     )
+
+        # # ----------------------------------------------
+        # # Create final result
+        # # ----------------------------------------------
+
+        # final_results = results.loc[selected].copy()
+
+        # # ----------------------------------------------
+        # # Sort final result
+        # # ----------------------------------------------
+
+        # final_results = final_results.sort_values(
+        #     by=["category_rank", "absolute_difference"],
+        #     ascending=[True, True],
+        # )
+
+        # # ----------------------------------------------
+        # # Return useful columns
+        # # ----------------------------------------------
+
+        # return final_results[
+        #     [
+        #         "college_code",
+        #         "college_name",
+        #         "branch",
+        #         column,
+        #         "margin",
+        #         "category",
+        #     ]
+        # ].rename(columns={column: "cutoff"})
+
 
                 # ----------------------------------------------
-        # Fill remaining slots if a category has
-        # insufficient colleges
+        # Keep colleges within the student's cutoff
         # ----------------------------------------------
 
-        if len(selected) < limit:
+        results = results[
+            results[column] <= cutoff
+        ].copy()
 
-            # Only use eligible recommendation categories.
-            # Do NOT include colleges whose historical
-            # cutoff was higher than the student's cutoff.
-
-            eligible_results = results[
-                results["category"] !=
-                "More competitive than 2025 cutoff"
-            ]
-
-            remaining = eligible_results[
-                ~eligible_results.index.isin(
-                    selected_indices
-                )
-            ]
-
-            remaining_slots = limit - len(selected)
-
-            for index in remaining.index[:remaining_slots]:
-
-                selected.append(index)
-
-                selected_indices.add(index)
-            selected_indices.add(index)
-            
-        # ----------------------------------------------
-        # Limit results
-        # ----------------------------------------------
-
-        selected = selected[:limit]
-
-        if not selected:
+        if results.empty:
             return pd.DataFrame(
                 columns=[
                     "college_code",
                     "college_name",
                     "branch",
                     "cutoff",
-                    "margin",
-                    "category",
                 ]
             )
 
         # ----------------------------------------------
-        # Create final result
+        # Rank by the actual 2025 historical cutoff
+        # ----------------------------------------------
+        #
+        # Higher historical cutoff means the college
+        # is closer to the student's cutoff.
+        #
+        # Example:
+        # Student cutoff = 187
+        #
+        # 183.5
+        # 181.5
+        # 180.0
+        # 179.0
+        # ...
         # ----------------------------------------------
 
-        final_results = results.loc[selected].copy()
-
-        # ----------------------------------------------
-        # Sort final result
-        # ----------------------------------------------
-
-        final_results = final_results.sort_values(
-            by=["category_rank", "absolute_difference"],
-            ascending=[True, True],
+        results = results.sort_values(
+            by=column,
+            ascending=False,
         )
 
         # ----------------------------------------------
-        # Return useful columns
+        # Return top recommendations
         # ----------------------------------------------
 
-        return final_results[
+        results = results.head(limit)
+
+        return results[
             [
                 "college_code",
                 "college_name",
                 "branch",
                 column,
-                "margin",
-                "category",
             ]
         ].rename(
-            columns={column: "cutoff"}
+            columns={
+                column: "cutoff"
+            }
         )
-
-    

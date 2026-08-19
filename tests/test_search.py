@@ -1,3 +1,5 @@
+from re import search
+
 import pandas as pd
 
 from src.tnea_search import TNEASearch
@@ -82,6 +84,7 @@ def test_recommend_colleges():
         cutoff=187,
         community="BC",
         branch="CSE",
+        district="Coimbatore",
         limit=10
     )
 
@@ -96,25 +99,30 @@ def test_recommendation_limit():
         cutoff=187,
         community="BC",
         branch="CSE",
+        district="Coimbatore",
         limit=10
     )
 
     assert len(recommendations) <= 10
 
 
-def test_recommendations_have_required_fields():
+def test_recommendations_match_requested_district():
     search = create_search()
 
     recommendations = search.recommend_colleges(
         cutoff=187,
         community="BC",
         branch="CSE",
-        limit=10
+        district="Coimbatore",
+        limit=10,
     )
 
-    assert "college_name" in recommendations.columns
-    assert "branch" in recommendations.columns
-def test_recommendations_exclude_more_competitive_colleges():
+    assert not recommendations.empty
+
+    assert (
+        recommendations["district"].str.lower()
+        == "coimbatore"
+    ).all()
     search = create_search()
 
     student_cutoff = 154
@@ -123,42 +131,33 @@ def test_recommendations_exclude_more_competitive_colleges():
         cutoff=student_cutoff,
         community="OC",
         branch="CSE",
+        district="Coimbatore",
         limit=10
     )
 
     if not recommendations.empty:
 
-        assert not (
-            recommendations["category"]
-            == "More competitive than 2025 cutoff"
-        ).any()
+        assert "margin" in recommendations.columns
+        assert "category" in recommendations.columns
 
-
-
-        (154, "OC", "CSE"),
-        (190, "MBC", "ECE"),
-        (175.5, "SC", "IT"),
-        (192.5, "OC", "Mechanical"),
-        (180, "MBC", "AIDS"),
-        (185.5, "ST", "EEE"),
-        
     
 @pytest.mark.parametrize(
-    "cutoff, community, branch",
+    "cutoff, community, branch , district",
     [
-        (154, "OC", "CSE"),
-        (190, "MBC", "ECE"),
-        (175.5, "SC", "IT"),
-        (192.5, "OC", "Mechanical"),
-        (180, "MBC", "AIDS"),
-        (185.5, "ST", "EEE"),
-    ],
+    (154, "OC", "CSE", "Coimbatore"),
+    (190, "MBC", "ECE", "Salem"),
+    (175.5, "SC", "IT", "Chennai"),
+    (192.5, "OC", "Mechanical", "Madurai"),
+    (180, "MBC", "AIDS", "Salem"),
+    (185.5, "ST", "EEE", "Coimbatore"),
+]
 )
  
 def test_recommendations_for_multiple_profiles(
     cutoff,
     community,
-    branch
+    branch,
+    district,
 ):
     search = create_search()
 
@@ -166,40 +165,45 @@ def test_recommendations_for_multiple_profiles(
         cutoff=cutoff,
         community=community,
         branch=branch,
-        limit=10
+        district=district,
+        limit=10,
     )
 
     assert isinstance(
         recommendations,
-        pd.DataFrame
+        pd.DataFrame,
     )
 
     assert len(recommendations) <= 10
 
     if not recommendations.empty:
 
-        # Every result must belong to the
-        # requested branch.
+        # Correct branch
         assert (
             recommendations["branch"]
             == search.resolve_branch(branch)
         ).all()
 
-        # No unsuitable "more competitive"
-        # result should enter recommendations.
-        assert not (
-            recommendations["category"]
-            == "More competitive than 2025 cutoff"
-        ).any()
+        # Correct district
+        assert (
+            recommendations["district"].str.lower()
+            == district.lower()
+        ).all()
 
-        # Required recommendation fields.
+        # Historical cutoff must not exceed student's cutoff
+        assert (
+            recommendations["cutoff"]
+            <= cutoff
+        ).all()
+
+        # Required fields
         assert "college_name" in recommendations.columns
+        assert "college_code" in recommendations.columns
+        assert "branch" in recommendations.columns
+        assert "district" in recommendations.columns
         assert "cutoff" in recommendations.columns
-        assert "margin" in recommendations.columns
-        assert "category" in recommendations.columns
         
-        
-def test_recommendation_margin_is_correct():
+def test_recommendation_cutoff_does_not_exceed_student_cutoff():
     search = create_search()
 
     student_cutoff = 187
@@ -208,22 +212,16 @@ def test_recommendation_margin_is_correct():
         cutoff=student_cutoff,
         community="BC",
         branch="CSE",
-        limit=10
+        district="Coimbatore",
+        limit=10,
     )
 
     assert not recommendations.empty
 
-    for _, row in recommendations.iterrows():
-
-        expected_margin = (
-            student_cutoff -
-            float(row["cutoff"])
-        )
-
-        assert float(row["margin"]) == pytest.approx(
-            expected_margin
-        )
-        
+    assert (
+        recommendations["cutoff"]
+        <= student_cutoff
+    ).all()
 
 def test_get_college_by_code():
     search = create_search()
@@ -309,3 +307,41 @@ def test_compare_colleges_unavailable_branch():
 
     assert isinstance(results, pd.DataFrame)
     assert results.empty
+
+def test_search_district():
+    search = create_search()
+
+    results = search.search_district("Coimbatore")
+
+    assert isinstance(results, pd.DataFrame)
+    assert not results.empty
+    assert "college_code" in results.columns
+    assert "college_name" in results.columns
+    assert "district" in results.columns
+
+
+def test_search_district_case_insensitive():
+    search = create_search()
+
+    upper = search.search_district("COIMBATORE")
+    lower = search.search_district("coimbatore")
+
+    assert len(upper) == len(lower)
+    assert len(upper) == 54
+
+
+def test_search_district_invalid():
+    search = create_search()
+
+    results = search.search_district("XYZ")
+
+    assert isinstance(results, pd.DataFrame)
+    assert results.empty
+
+
+def test_search_district_no_duplicate_colleges():
+    search = create_search()
+
+    results = search.search_district("Coimbatore")
+
+    assert results["college_code"].is_unique

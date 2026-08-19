@@ -122,6 +122,23 @@ class TNEAQueryParser:
                 return branch
 
         return None
+    
+        # ==================================================
+    # EXTRACT DISTRICT
+    # ==================================================
+
+    def extract_district(self, text):
+
+        text_lower = text.lower().strip()
+
+        for district in self.search_engine.districts:
+
+            pattern = r"\b" + re.escape(district.lower()) + r"\b"
+
+            if re.search(pattern, text_lower):
+                return district
+
+        return None
 
     # ==================================================
     # PARSE QUERY
@@ -131,7 +148,12 @@ class TNEAQueryParser:
 
         if not text or not text.strip():
 
-            return {"cutoff": None, "community": None, "branch": None}
+            return {
+                "cutoff": None,
+                "community": None,
+                "branch": None,
+                "district": None,
+            }
 
         cutoff = self.extract_cutoff(text)
 
@@ -139,4 +161,11 @@ class TNEAQueryParser:
 
         branch = self.extract_branch(text)
 
-        return {"cutoff": cutoff, "community": community, "branch": branch}
+        district = self.extract_district(text)
+
+        return {
+            "cutoff": cutoff,
+            "community": community,
+            "branch": branch,
+            "district": district,
+        }
