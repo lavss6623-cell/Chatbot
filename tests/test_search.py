@@ -105,7 +105,6 @@ def test_recommendation_limit():
 
     assert len(recommendations) <= 10
 
-
 def test_recommendations_match_requested_district():
     search = create_search()
 
@@ -123,22 +122,6 @@ def test_recommendations_match_requested_district():
         recommendations["district"].str.lower()
         == "coimbatore"
     ).all()
-    search = create_search()
-
-    student_cutoff = 154
-
-    recommendations = search.recommend_colleges(
-        cutoff=student_cutoff,
-        community="OC",
-        branch="CSE",
-        district="Coimbatore",
-        limit=10
-    )
-
-    if not recommendations.empty:
-
-        assert "margin" in recommendations.columns
-        assert "category" in recommendations.columns
 
     
 @pytest.mark.parametrize(

@@ -100,6 +100,7 @@ def test_parse_empty_input():
         "cutoff": None,
         "community": None,
         "branch": None,
+        "district": None,
     }
 
 
@@ -112,4 +113,5 @@ def test_parse_whitespace_input():
         "cutoff": None,
         "community": None,
         "branch": None,
+        "district": None,
     }

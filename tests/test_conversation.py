@@ -45,7 +45,8 @@ def test_complete_recommendation_state():
     state.update({
         "branch": "CSE",
         "cutoff": 187,
-        "community": "BC"
+        "community": "BC",
+        "district": "Coimbatore"
     })
 
     missing = state.missing_for_recommendation()

@@ -1,3 +1,4 @@
+from pydoc import text
 import re
 
 
@@ -130,16 +131,34 @@ class TNEAQueryParser:
     def extract_district(self, text):
 
         text_lower = text.lower().strip()
+        
+        preference_patterns = [
+        r"(?:colleges?|college|engineering colleges?)\s+(?:in|around|near|at)\s+([a-zA-Z]+)",
+        r"(?:in|around|near|at)\s+([a-zA-Z]+)\s+(?:colleges?|college)",
+        r"(?:looking for|interested in|want|prefer)\s+.*?(?:in|around|near)\s+([a-zA-Z]+)",
+    ]
+        for pattern in preference_patterns:
 
+            match = re.search(pattern, text_lower)
+            
+            if match:
+                
+                possible_district = match.group(1).strip()
+                
+                for district in self.search_engine.districts:
+                    
+                    if possible_district == district.lower():
+                        return district
+                    
+                    
         for district in self.search_engine.districts:
-
+            
             pattern = r"\b" + re.escape(district.lower()) + r"\b"
-
+            
             if re.search(pattern, text_lower):
                 return district
-
+            
         return None
-
     # ==================================================
     # PARSE QUERY
     # ==================================================
