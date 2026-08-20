@@ -14,6 +14,7 @@ def test_multiturn_recommendation_flow():
     assert bot.state.get("branch") == "cse"
     assert bot.state.get("cutoff") is None
     assert bot.state.get("community") is None
+    assert bot.state.get("district") is None
 
 
     # Turn 2: User provides cutoff
@@ -26,6 +27,7 @@ def test_multiturn_recommendation_flow():
     assert bot.state.get("branch") == "cse"
     assert bot.state.get("cutoff") == 187.0
     assert bot.state.get("community") is None
+    assert bot.state.get("district") is None
 
 
     # Turn 3: User provides community
@@ -38,7 +40,20 @@ def test_multiturn_recommendation_flow():
     assert bot.state.get("branch") == "cse"
     assert bot.state.get("cutoff") == 187.0
     assert bot.state.get("community") == "BC"
+    assert bot.state.get("district") is None
 
+
+    # Turn 4: User provides district
+    response = bot.process_message(
+        "Coimbatore"
+    )
+
+    assert isinstance(response, str)
+    assert response.strip() != ""
+    assert bot.state.get("branch") == "cse"
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("district") == "Coimbatore"
 
     # Final response should contain recommendation information.
     assert "2025" in response

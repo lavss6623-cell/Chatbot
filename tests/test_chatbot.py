@@ -10,20 +10,21 @@ def bot():
 
 def test_complete_cse_recommendation(bot):
     response = bot.process_message(
-        "I got 187 cutoff and I'm BC. I want CSE."
+        "I got 187 cutoff and I'm BC. I want CSE in Coimbatore."
     )
 
     assert isinstance(response, str)
     assert "2025" in response
-    assert "recommend" in response.lower()
+    assert "colleges you can consider" in response.lower()
     assert bot.state.get("cutoff") == 187.0
     assert bot.state.get("community") == "BC"
     assert bot.state.get("branch") == "cse"
+    assert bot.state.get("district") == "Coimbatore"
 
 
 def test_complete_ece_recommendation(bot):
     response = bot.process_message(
-        "My cutoff is 190 and I'm MBC. I want ECE."
+        "My cutoff is 190 and I'm MBC. I want ECE in Salem."
     )
 
     assert isinstance(response, str)
@@ -31,6 +32,7 @@ def test_complete_ece_recommendation(bot):
     assert bot.state.get("cutoff") == 190.0
     assert bot.state.get("community") == "MBC"
     assert bot.state.get("branch") == "ece"
+    assert bot.state.get("district") == "Salem"
 
 
 def test_sc_it_recommendation(bot):

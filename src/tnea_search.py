@@ -803,6 +803,7 @@ class TNEASearch:
                     "college_code",
                     "college_name",
                     "branch",
+                    "district",
                     "cutoff",
                 ]
             )
@@ -833,6 +834,132 @@ class TNEASearch:
         # Return top recommendations
         # ----------------------------------------------
 
+                # ----------------------------------------------
+        # Find exact cutoff matches
+        # ----------------------------------------------
+
+        results = results[
+            results[column] == cutoff
+        ].copy()
+
+        if results.empty:
+            return pd.DataFrame(
+                columns=[
+                    "college_code",
+                    "college_name",
+                    "branch",
+                    "district",
+                    "cutoff",
+                ]
+            )
+
+        # ----------------------------------------------
+        # Limit exact matches
+        # ----------------------------------------------
+
+        results = results.head(limit)
+
+        # ----------------------------------------------
+        # Return exact matches
+        # ----------------------------------------------
+
+        return results[
+            [
+                "college_code",
+                "college_name",
+                "branch",
+                "district",
+                column,
+            ]
+        ].rename(
+            columns={
+                column: "cutoff"
+            }
+        )
+        
+        # ==================================================
+    # ALTERNATIVE COLLEGES
+    # ==================================================
+
+    def alternative_colleges(
+        self,
+        cutoff,
+        community,
+        branch,
+        district,
+        limit=10,
+    ):
+        """
+        Find alternative colleges in the same district,
+        branch and community when an exact cutoff match
+        is not available.
+
+        Uses 2025 historical cutoff data.
+        """
+
+        try:
+            cutoff = float(cutoff)
+        except (TypeError, ValueError):
+            raise ValueError("Cutoff must be a number.")
+
+        community = str(community).upper().strip()
+
+        if community not in self.community_map:
+            raise ValueError(
+                "Invalid community. Use OC, BC, BCM, MBC, SC, SCA or ST."
+            )
+
+        column = self.community_map[community]
+
+        resolved_branch = self.resolve_branch(branch)
+
+        if resolved_branch is None:
+            return pd.DataFrame()
+
+        # ----------------------------------------------
+        # Same district + same branch
+        # ----------------------------------------------
+
+        results = self.df[
+            (self.df["district"].str.lower() == str(district).lower().strip())
+            & (self.df["branch"] == resolved_branch)
+        ].copy()
+
+        # ----------------------------------------------
+        # Remove missing historical cutoffs
+        # ----------------------------------------------
+
+        results = results[results[column].notna()].copy()
+
+        # ----------------------------------------------
+        # Only colleges whose historical cutoff is
+        # at or below the student's cutoff
+        # ----------------------------------------------
+
+        results = results[
+            results[column] <= cutoff
+        ].copy()
+
+        if results.empty:
+            return pd.DataFrame(
+                columns=[
+                    "college_code",
+                    "college_name",
+                    "branch",
+                    "district",
+                    "cutoff",
+                ]
+            )
+
+        # ----------------------------------------------
+        # Closest historical cutoff first
+        # ----------------------------------------------
+
+        results = results.sort_values(
+            by=column,
+            ascending=False,
+        )
+
         results = results.head(limit)
 
         return results[
@@ -840,6 +967,7 @@ class TNEASearch:
                 "college_code",
                 "college_name",
                 "branch",
+                "district",
                 column,
             ]
         ].rename(

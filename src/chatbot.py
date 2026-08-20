@@ -18,6 +18,7 @@ class TNEAChatbot:
         # Conversation context
         self.pending_intent = None
         self.last_intent = None
+        self.waiting_for_alternative_confirmation = False
 
     # ==================================================
     # PROCESS MESSAGE
@@ -28,6 +29,29 @@ class TNEAChatbot:
 
         if not message:
             return "Please enter a message."
+        # ----------------------------------------------
+        # Handle alternative-college confirmation
+        # ----------------------------------------------
+
+        if self.waiting_for_alternative_confirmation:
+
+            answer = message.lower().strip()
+
+            if answer in {"yes", "y", "yeah", "yep", "sure"}:
+                self.waiting_for_alternative_confirmation = False
+                return self.handle_alternative_recommendation()
+
+            if answer in {"no", "n", "nope"}:
+                self.waiting_for_alternative_confirmation = False
+                self.pending_intent = None
+                return (
+                    "Okay. I won't show alternative colleges."
+                )
+
+            return (
+                "Please answer yes or no. "
+                "Would you like me to show other colleges?"
+            )
 
         detected_intent = self.intent_detector.detect(message)
         parsed = self.parser.parse(message)
@@ -37,7 +61,16 @@ class TNEAChatbot:
         self.state.update(parsed)
 
         # Determine intent.
-        if detected_intent != "unknown":
+        if (
+            detected_intent == "district_search"
+            and parsed.get("cutoff") is not None
+            and parsed.get("community") is not None
+            and parsed.get("branch") is not None
+            and parsed.get("district") is not None
+        ):
+            intent = "recommendation"
+
+        elif detected_intent != "unknown":
 
             intent = detected_intent
 
@@ -129,7 +162,17 @@ class TNEAChatbot:
         )
 
         if recommendations.empty:
-            return "I couldn't find matching 2025 cutoff data " "for this combination."
+            
+            self.waiting_for_alternative_confirmation = True
+            
+            return (
+                
+        f"I couldn't find a college with an exact {cutoff} "
+        f"cutoff for {community} {resolved_branch} in {district} "
+        "based on 2025 historical data.\n\n"
+        f"Would you like me to show other {resolved_branch} "
+        f"colleges available in {district}?"
+    )
 
         self.pending_intent = None
 
@@ -142,6 +185,50 @@ class TNEAChatbot:
             recommendations=recommendations,
         )
 
+    # ==================================================
+    # ALTERNATIVE RECOMMENDATION
+    # ==================================================
+
+    def handle_alternative_recommendation(self):
+
+        cutoff = self.state.get("cutoff")
+        community = self.state.get("community")
+        branch = self.state.get("branch")
+        district = self.state.get("district")
+
+        resolved_branch = self.search.resolve_branch(branch)
+
+        if resolved_branch is None:
+            return (
+                f"I couldn't identify the branch '{branch}'. "
+                "Please try CSE, ECE, EEE, IT, Mechanical or Civil."
+            )
+
+        alternatives = self.search.alternative_colleges(
+            cutoff=cutoff,
+            community=community,
+            branch=branch,
+            district=district,
+            limit=10,
+        )
+
+        if alternatives.empty:
+            return (
+                f"I couldn't find any suitable alternative "
+                f"{resolved_branch} colleges in {district} "
+                "within your cutoff based on 2025 historical data."
+            )
+
+        self.waiting_for_alternative_confirmation = False
+
+        return self.format_response(
+            cutoff=cutoff,
+            community=community,
+            branch=resolved_branch,
+            recommendations=alternatives,
+        )
+        
+        
     # ==================================================
     # ASK FOR MISSING INFORMATION
     # ==================================================
@@ -162,6 +249,12 @@ class TNEAChatbot:
             return (
                 "Which branch are you interested in? "
                 "For example: CSE, ECE, EEE, IT, Mechanical or Civil."
+            )
+            
+        if field == "district":
+            return (
+                "Which district are you interested in? "
+                "For example: Coimbatore, Chennai, Salem, Madurai or Trichy."
             )
 
         return "I need some more information to help you."
@@ -521,3 +614,4 @@ class TNEAChatbot:
         self.state.reset()
         self.pending_intent = None
         self.last_intent = None
+        
