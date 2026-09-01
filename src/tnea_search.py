@@ -610,6 +610,9 @@ class TNEASearch:
             (self.df["district"].str.lower() == str(district).lower().strip())
             & (self.df["branch"] == resolved_branch)
         ].copy()
+        
+        results = results[results[column].notna()].copy()
+
         # ----------------------------------------------
         # Remove missing cutoffs
         # ----------------------------------------------

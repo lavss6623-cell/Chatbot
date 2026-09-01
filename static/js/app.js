@@ -96,8 +96,29 @@ document.addEventListener("DOMContentLoaded", () => {
         idle:
             "I'm listening...",
 
-        thinking:
-            "Let me check the TNEA data..."
+        tnea:
+            "Let me check the TNEA data...",
+
+        recommendation:
+            "Finding colleges that match your profile...",
+
+        cutoff:
+            "Checking the historical cutoff data...",
+
+        branch:
+            "Checking the available branches...",
+
+        college:
+            "Looking up the college details...",
+
+        general:
+            "Let me think about that...",
+
+        explanation:
+            "Putting together a clear explanation...",
+
+        error:
+            "Something went wrong. Let's try again."
 
     };
 
@@ -125,67 +146,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function setRobinState(state) {
 
-    robinState = state;
+        robinState = state;
 
-    const robinMessages = {
-        idle: "I'm listening...",
-        thinking: "Let me check the TNEA data...",
-        happy: "I found some useful information.",
-        error: "Something went wrong. Let's try again."
-    };
+        if (robinCharacter) {
 
+            robinCharacter.src =
+                "/static/images/robin-main.png";
 
-    /*
-     * ---------------------------------------------
-     * Robin ALWAYS uses robin-main.png
-     * ---------------------------------------------
-     */
+            robinCharacter.classList.remove(
+                "robin-idle",
+                "robin-thinking",
+                "robin-happy",
+                "robin-error"
+            );
 
-    if (robinCharacter) {
+            robinCharacter.classList.add(
+                "robin-idle"
+            );
 
-        robinCharacter.src =
-            "/static/images/robin-main.png";
+        }
 
+        if (robinStatus) {
 
-        /*
-         * Remove previous animation states.
-         */
+            robinStatus.textContent =
+                robinMessages[state] ||
+                robinMessages.idle;
 
-        robinCharacter.classList.remove(
-            "robin-idle",
-            "robin-thinking",
-            "robin-happy",
-            "robin-error"
-        );
-
-
-        /*
-         * Apply the new visual state.
-         */
-
-        robinCharacter.classList.add(
-            `robin-${state}`
-        );
+        }
 
     }
-
-
-    /*
-     * ---------------------------------------------
-     * Change speech bubble
-     * ---------------------------------------------
-     */
-
-    if (robinStatus) {
-
-        robinStatus.textContent =
-            robinMessages[state] ||
-            robinMessages.idle;
-
-    }
-
-}
-
     /*
      * -----------------------------------------------------
      * WAIT HELPER
@@ -470,6 +459,117 @@ ESCAPE HTML
 
     }
 
+    function getRobinThinkingState(message) {
+
+        const text = message.toLowerCase();
+
+        /*
+         * TNEA recommendation questions
+         */
+
+        if (
+            text.includes("which college") ||
+            text.includes("what college") ||
+            text.includes("college can i get") ||
+            text.includes("colleges can i get") ||
+            text.includes("recommend") ||
+            text.includes("suitable college") ||
+            text.includes("best college")
+        ) {
+            return "recommendation";
+        }
+
+
+        /*
+         * TNEA cutoff questions
+         */
+
+        if (
+            text.includes("cutoff") ||
+            text.includes("cut off") ||
+            text.includes("rank")
+        ) {
+            return "cutoff";
+        }
+
+
+        /*
+         * Branch questions
+         */
+
+        if (
+            text.includes("branch") ||
+            text.includes("branches") ||
+            text.includes("cse") ||
+            text.includes("ece") ||
+            text.includes("eee") ||
+            text.includes("mechanical") ||
+            text.includes("civil") ||
+            text.includes("information technology")
+        ) {
+            return "branch";
+        }
+
+
+        /*
+         * College information questions
+         */
+
+        if (
+            text.includes("anna university") ||
+            text.includes("college details") ||
+            text.includes("college information") ||
+            text.includes("tell me about")
+        ) {
+            return "college";
+        }
+
+
+        /*
+         * General explanation questions
+         */
+
+        if (
+            text.includes("what is") ||
+            text.includes("what does") ||
+            text.includes("explain") ||
+            text.includes("difference between") ||
+            text.includes("how does") ||
+            text.includes("why")
+        ) {
+            return "explanation";
+        }
+
+
+        /*
+         * TNEA-specific words
+         */
+
+        if (
+            text.includes("tnea") ||
+            text.includes("community") ||
+            text.includes("bc") ||
+            text.includes("mbc") ||
+            text.includes("bcm") ||
+            text.includes("oc") ||
+            text.includes("sc") ||
+            text.includes("sca") ||
+            text.includes("st") ||
+            text.includes("counselling") ||
+            text.includes("counseling")
+        ) {
+            return "tnea";
+        }
+
+
+        /*
+         * Otherwise treat it as general chat.
+         */
+
+        return "general";
+
+    }
+
     /* =====================================================
    SEND MESSAGE
 ===================================================== */
@@ -545,15 +645,12 @@ ESCAPE HTML
         const thinkingStartedAt =
             Date.now();
 
+        const robinThinkingState =
+            getRobinThinkingState(message);
 
         setRobinState(
-            "thinking"
+            robinThinkingState
         );
-
-
-        /*
-         * Show chat typing indicator.
-         */
 
         showTypingIndicator();
 
@@ -963,44 +1060,44 @@ ESCAPE HTML
    RESET CHAT
 ===================================================== */
 
-function resetFrontend() {
+    function resetFrontend() {
 
-    /*
-     * ---------------------------------------------
-     * Remove conversation messages
-     * ---------------------------------------------
-     */
+        /*
+         * ---------------------------------------------
+         * Remove conversation messages
+         * ---------------------------------------------
+         */
 
-    if (chatMessages) {
+        if (chatMessages) {
 
-        const dynamicMessages =
-            chatMessages.querySelectorAll(
-                ".user-message, .assistant-message, #typingIndicator"
+            const dynamicMessages =
+                chatMessages.querySelectorAll(
+                    ".user-message, .assistant-message, #typingIndicator"
+                );
+
+            dynamicMessages.forEach(
+                element => {
+                    element.remove();
+                }
             );
 
-        dynamicMessages.forEach(
-            element => {
-                element.remove();
-            }
+        }
+
+
+        /*
+         * ---------------------------------------------
+         * Restore initial Robin welcome message
+         * ---------------------------------------------
+         */
+
+        const welcomeMessage = document.createElement(
+            "div"
         );
 
-    }
+        welcomeMessage.className =
+            "message assistant-message";
 
-
-    /*
-     * ---------------------------------------------
-     * Restore initial Robin welcome message
-     * ---------------------------------------------
-     */
-
-    const welcomeMessage = document.createElement(
-        "div"
-    );
-
-    welcomeMessage.className =
-        "message assistant-message";
-
-    welcomeMessage.innerHTML = `
+        welcomeMessage.innerHTML = `
         <div class="message-avatar">
             <img
                 src="/static/images/robin-main.png"
@@ -1026,236 +1123,236 @@ function resetFrontend() {
     `;
 
 
-    /*
-     * Insert the welcome message
-     * before the static welcome section.
-     */
+        /*
+         * Insert the welcome message
+         * before the static welcome section.
+         */
 
-    if (chatMessages) {
+        if (chatMessages) {
 
-        const welcomeBlock =
-            chatMessages.querySelector(
-                ".welcome-block"
-            );
+            const welcomeBlock =
+                chatMessages.querySelector(
+                    ".welcome-block"
+                );
 
-        if (welcomeBlock) {
+            if (welcomeBlock) {
 
-            chatMessages.insertBefore(
-                welcomeMessage,
-                welcomeBlock
-            );
+                chatMessages.insertBefore(
+                    welcomeMessage,
+                    welcomeBlock
+                );
 
-        } else {
+            } else {
 
-            chatMessages.appendChild(
-                welcomeMessage
-            );
+                chatMessages.appendChild(
+                    welcomeMessage
+                );
+
+            }
+
+        }
+
+
+        /*
+         * ---------------------------------------------
+         * Reset profile
+         * ---------------------------------------------
+         */
+
+        if (profileCutoff) {
+
+            profileCutoff.textContent =
+                "—";
+
+        }
+
+
+        if (profileCommunity) {
+
+            profileCommunity.textContent =
+                "—";
+
+        }
+
+
+        if (profileBranch) {
+
+            profileBranch.textContent =
+                "—";
+
+        }
+
+
+        /*
+         * ---------------------------------------------
+         * Reset counselling progress
+         * ---------------------------------------------
+         */
+
+        [
+            progressCutoff,
+            progressCommunity,
+            progressBranch,
+            progressResults
+
+        ].forEach(
+            step => {
+
+                step?.classList.remove(
+                    "completed",
+                    "current"
+                );
+
+            }
+        );
+
+
+        /*
+         * ---------------------------------------------
+         * Reset Robin
+         * ---------------------------------------------
+         */
+
+        setRobinState(
+            "idle"
+        );
+
+
+        /*
+         * ---------------------------------------------
+         * Clear input
+         * ---------------------------------------------
+         */
+
+        if (messageInput) {
+
+            messageInput.value = "";
+            messageInput.focus();
 
         }
 
     }
 
-
-    /*
-     * ---------------------------------------------
-     * Reset profile
-     * ---------------------------------------------
-     */
-
-    if (profileCutoff) {
-
-        profileCutoff.textContent =
-            "—";
-
-    }
-
-
-    if (profileCommunity) {
-
-        profileCommunity.textContent =
-            "—";
-
-    }
-
-
-    if (profileBranch) {
-
-        profileBranch.textContent =
-            "—";
-
-    }
-
-
-    /*
-     * ---------------------------------------------
-     * Reset counselling progress
-     * ---------------------------------------------
-     */
-
-    [
-        progressCutoff,
-        progressCommunity,
-        progressBranch,
-        progressResults
-
-    ].forEach(
-        step => {
-
-            step?.classList.remove(
-                "completed",
-                "current"
-            );
-
-        }
-    );
-
-
-    /*
-     * ---------------------------------------------
-     * Reset Robin
-     * ---------------------------------------------
-     */
-
-    setRobinState(
-        "idle"
-    );
-
-
-    /*
-     * ---------------------------------------------
-     * Clear input
-     * ---------------------------------------------
-     */
-
-    if (messageInput) {
-
-        messageInput.value = "";
-        messageInput.focus();
-
-    }
-
-}
-    
     /* =====================================================
    RESET BUTTON
 ===================================================== */
 
-if (resetButton) {
+    if (resetButton) {
 
-    resetButton.addEventListener(
-        "click",
-        async () => {
-
-            /*
-             * Don't reset while a message is
-             * currently being processed.
-             */
-
-            if (isProcessing) {
-                return;
-            }
-
-
-            /*
-             * Confirm reset.
-             */
-
-            const confirmed =
-                window.confirm(
-                    "Reset your TNEA conversation?"
-                );
-
-
-            if (!confirmed) {
-                return;
-            }
-
-
-            try {
+        resetButton.addEventListener(
+            "click",
+            async () => {
 
                 /*
-                 * Reset BACKEND conversation state.
+                 * Don't reset while a message is
+                 * currently being processed.
                  */
 
-                const response =
-                    await fetch(
-                        "/reset",
-                        {
-                            method: "POST"
-                        }
-                    );
-
-
-                /*
-                 * Read backend response.
-                 */
-
-                const data =
-                    await response.json();
-
-
-                /*
-                 * Backend reset failed.
-                 */
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.error ||
-                        "Unable to reset the conversation."
-                    );
-
+                if (isProcessing) {
+                    return;
                 }
 
 
                 /*
-                 * Reset FRONTEND state
-                 * only after backend reset succeeds.
+                 * Confirm reset.
                  */
 
-                resetFrontend();
-
-
-                /*
-                 * Keep the frontend profile
-                 * synchronized with backend.
-                 */
-
-                if (data.state) {
-
-                    updateProfile(
-                        data.state
+                const confirmed =
+                    window.confirm(
+                        "Reset your TNEA conversation?"
                     );
 
-                    updateProgress(
-                        data.state
+
+                if (!confirmed) {
+                    return;
+                }
+
+
+                try {
+
+                    /*
+                     * Reset BACKEND conversation state.
+                     */
+
+                    const response =
+                        await fetch(
+                            "/reset",
+                            {
+                                method: "POST"
+                            }
+                        );
+
+
+                    /*
+                     * Read backend response.
+                     */
+
+                    const data =
+                        await response.json();
+
+
+                    /*
+                     * Backend reset failed.
+                     */
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            data.error ||
+                            "Unable to reset the conversation."
+                        );
+
+                    }
+
+
+                    /*
+                     * Reset FRONTEND state
+                     * only after backend reset succeeds.
+                     */
+
+                    resetFrontend();
+
+
+                    /*
+                     * Keep the frontend profile
+                     * synchronized with backend.
+                     */
+
+                    if (data.state) {
+
+                        updateProfile(
+                            data.state
+                        );
+
+                        updateProgress(
+                            data.state
+                        );
+
+                    }
+
+
+                    console.log(
+                        "TNEA conversation reset successfully."
+                    );
+
+
+                } catch (error) {
+
+                    console.error(
+                        "Reset error:",
+                        error
+                    );
+
+                    alert(
+                        "Unable to reset the conversation. Please try again."
                     );
 
                 }
 
-
-                console.log(
-                    "TNEA conversation reset successfully."
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "Reset error:",
-                    error
-                );
-
-                alert(
-                    "Unable to reset the conversation. Please try again."
-                );
-
             }
+        );
 
-        }
-    );
-
-}
+    }
 
     /* =====================================================
        UPDATE PROFILE
