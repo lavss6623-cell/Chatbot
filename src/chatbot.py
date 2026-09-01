@@ -1,9 +1,11 @@
+from email.mime import message
 from urllib import response
 
 from src.tnea_search import TNEASearch
 from src.query_parser import TNEAQueryParser
 from src.intent_detector import TNEAIntentDetector
 from src.conversation import ConversationState
+from src.general_chat import GeneralChat
 
 
 class TNEAChatbot:
@@ -14,6 +16,7 @@ class TNEAChatbot:
         self.parser = TNEAQueryParser(self.search)
         self.intent_detector = TNEAIntentDetector()
         self.state = ConversationState()
+        self.general_chat = GeneralChat()
 
         # Conversation context
         self.pending_intent = None
@@ -44,13 +47,10 @@ class TNEAChatbot:
             if answer in {"no", "n", "nope"}:
                 self.waiting_for_alternative_confirmation = False
                 self.pending_intent = None
-                return (
-                    "Okay. I won't show alternative colleges."
-                )
+                return "Okay. I won't show alternative colleges."
 
             return (
-                "Please answer yes or no. "
-                "Would you like me to show other colleges?"
+                "Please answer yes or no. " "Would you like me to show other colleges?"
             )
 
         detected_intent = self.intent_detector.detect(message)
@@ -126,7 +126,7 @@ class TNEAChatbot:
         elif intent == "district_search":
             return self.handle_district_search(message)
 
-        return self.handle_unknown()
+        return self.handle_general_chat(message)
 
     # ==================================================
     # RECOMMENDATION
@@ -162,17 +162,16 @@ class TNEAChatbot:
         )
 
         if recommendations.empty:
-            
+
             self.waiting_for_alternative_confirmation = True
-            
+
             return (
-                
-        f"I couldn't find a college with an exact {cutoff} "
-        f"cutoff for {community} {resolved_branch} in {district} "
-        "based on 2025 historical data.\n\n"
-        f"Would you like me to show other {resolved_branch} "
-        f"colleges available in {district}?"
-    )
+                f"I couldn't find a college with an exact {cutoff} "
+                f"cutoff for {community} {resolved_branch} in {district} "
+                "based on 2025 historical data.\n\n"
+                f"Would you like me to show other {resolved_branch} "
+                f"colleges available in {district}?"
+            )
 
         self.pending_intent = None
 
@@ -227,8 +226,7 @@ class TNEAChatbot:
             branch=resolved_branch,
             recommendations=alternatives,
         )
-        
-        
+
     # ==================================================
     # ASK FOR MISSING INFORMATION
     # ==================================================
@@ -250,7 +248,7 @@ class TNEAChatbot:
                 "Which branch are you interested in? "
                 "For example: CSE, ECE, EEE, IT, Mechanical or Civil."
             )
-            
+
         if field == "district":
             return (
                 "Which district are you interested in? "
@@ -463,9 +461,9 @@ class TNEAChatbot:
             response.append(f"   College code: {row['college_code']}")
 
         return "\n".join(response)
-    
-    
+
         # ==================================================
+
     # DISTRICT SEARCH
     # ==================================================
 
@@ -513,6 +511,19 @@ class TNEAChatbot:
         return "\n".join(response)
 
     # ==================================================
+# GENERAL CHAT
+# ==================================================
+
+
+    def handle_general_chat(self, message):
+        self.pending_intent = None
+
+        try:
+            return self.general_chat.ask(message)
+        except Exception as e:
+            return "I couldn't process that question right now. " "Please try again."
+
+    # ==================================================
     # UNKNOWN
     # ==================================================
 
@@ -533,12 +544,12 @@ class TNEAChatbot:
     # ==================================================
 
     def format_response(
-    self,
-    cutoff,
-    community,
-    branch,
-    recommendations,
-):
+        self,
+        cutoff,
+        community,
+        branch,
+        recommendations,
+    ):
         response = []
 
         response.append(
@@ -551,61 +562,48 @@ class TNEAChatbot:
         response.append(f"Cutoff    : {float(cutoff):.1f}")
         response.append(f"Community : {community}")
         response.append(f"Branch    : {branch}")
-    
+
         district = self.state.get("district")
-        
+
         if district:
             response.append(f"District  : {district}")
-            
+
         response.append("")
         response.append("Colleges you can consider")
         response.append("----------------")
-    
+
         if recommendations.empty:
             response.append(
                 "I couldn't find colleges matching all of your requirements."
             )
             return "\n".join(response)
-        
+
         for index, (_, row) in enumerate(
             recommendations.iterrows(),
             start=1,
         ):
             college_name = str(row["college_name"]).strip()
-            
+
             if "," in college_name:
                 college_name = college_name.split(",")[0].strip()
-                
-            college_name = college_name.replace(
-            " (Autonomous)",
-            ""
-        ).strip()
-            
+
+            college_name = college_name.replace(" (Autonomous)", "").strip()
+
+            response.append(f"{index}. {college_name}")
+
+            response.append(f"   College code: {row['college_code']}")
             response.append(
-            f"{index}. {college_name}"
-        )
-            
-            response.append(
-            f"   College code: {row['college_code']}"
-        )
-            response.append(
-            f"   2025 {community} cutoff: "
-            f"{float(row['cutoff']):.1f}"
-        )
+                f"   2025 {community} cutoff: " f"{float(row['cutoff']):.1f}"
+            )
             response.append("")
-            
-            
+
         response.append("----------------")
         response.append("")
-        response.append(
-            "These results are based on 2025 historical TNEA cutoff data."
-        )
-        response.append(
-            "They are not admission guarantees for upcoming counselling."
-        )
+        response.append("These results are based on 2025 historical TNEA cutoff data.")
+        response.append("They are not admission guarantees for upcoming counselling.")
 
         return "\n".join(response)
-            
+
     # ==================================================
     # RESET CONVERSATION
     # ==================================================
@@ -614,4 +612,3 @@ class TNEAChatbot:
         self.state.reset()
         self.pending_intent = None
         self.last_intent = None
-        
