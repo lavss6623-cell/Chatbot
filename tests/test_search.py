@@ -77,11 +77,11 @@ def test_colleges_by_cutoff_contains_expected_columns():
     assert "branch" in results.columns
 
 
-def test_recommend_colleges():
+def test_recommend_colleges_exact_match():
     search = create_search()
 
     recommendations = search.recommend_colleges(
-        cutoff=187,
+        cutoff=183.5,
         community="BC",
         branch="CSE",
         district="Coimbatore",
@@ -90,6 +90,10 @@ def test_recommend_colleges():
 
     assert isinstance(recommendations, pd.DataFrame)
     assert not recommendations.empty
+
+    assert (
+        recommendations["cutoff"] == 183.5
+    ).all()
 
 
 def test_recommendation_limit():
@@ -109,7 +113,7 @@ def test_recommendations_match_requested_district():
     search = create_search()
 
     recommendations = search.recommend_colleges(
-        cutoff=187,
+        cutoff=183.5,
         community="BC",
         branch="CSE",
         district="Coimbatore",
@@ -122,7 +126,6 @@ def test_recommendations_match_requested_district():
         recommendations["district"].str.lower()
         == "coimbatore"
     ).all()
-
     
 @pytest.mark.parametrize(
     "cutoff, community, branch , district",
@@ -186,10 +189,10 @@ def test_recommendations_for_multiple_profiles(
         assert "district" in recommendations.columns
         assert "cutoff" in recommendations.columns
         
-def test_recommendation_cutoff_does_not_exceed_student_cutoff():
+def test_recommendation_cutoff_matches_student_cutoff():
     search = create_search()
 
-    student_cutoff = 187
+    student_cutoff = 183.5
 
     recommendations = search.recommend_colleges(
         cutoff=student_cutoff,
@@ -202,8 +205,7 @@ def test_recommendation_cutoff_does_not_exceed_student_cutoff():
     assert not recommendations.empty
 
     assert (
-        recommendations["cutoff"]
-        <= student_cutoff
+        recommendations["cutoff"] == student_cutoff
     ).all()
 
 def test_get_college_by_code():
@@ -328,3 +330,80 @@ def test_search_district_no_duplicate_colleges():
     results = search.search_district("Coimbatore")
 
     assert results["college_code"].is_unique
+
+def test_alternatives_respect_max_gap():
+    search = create_search()
+
+    results = search.alternative_colleges(
+        cutoff=187,
+        community="BC",
+        branch="CSE",
+        district="Coimbatore",
+        limit=10,
+        max_gap=5,
+    )
+
+    assert isinstance(results, pd.DataFrame)
+
+    if not results.empty:
+        assert (results["gap"] <= 5).all()
+
+
+def test_alternatives_do_not_exceed_student_cutoff():
+    search = create_search()
+
+    results = search.alternative_colleges(
+        cutoff=187,
+        community="BC",
+        branch="CSE",
+        district="Coimbatore",
+        limit=10,
+        max_gap=5,
+    )
+
+    if not results.empty:
+        assert (results["cutoff"] <= 187).all()
+
+
+def test_alternatives_are_sorted_by_gap():
+    search = create_search()
+
+    results = search.alternative_colleges(
+        cutoff=183.5,
+        community="OC",
+        branch="CSE",
+        district="Coimbatore",
+        limit=10,
+        max_gap=5,
+    )
+
+    assert isinstance(results, pd.DataFrame)
+
+    if len(results) > 1:
+        assert results["gap"].is_monotonic_increasing
+
+
+def test_alternatives_match_requested_profile():
+    search = create_search()
+
+    results = search.alternative_colleges(
+        cutoff=183.5,
+        community="OC",
+        branch="CSE",
+        district="Coimbatore",
+        limit=10,
+        max_gap=5,
+    )
+
+    assert isinstance(results, pd.DataFrame)
+
+    if not results.empty:
+        assert (
+            results["branch"]
+            == search.resolve_branch("CSE")
+        ).all()
+
+        assert (
+            results["district"].str.lower()
+            == "coimbatore"
+        ).all()

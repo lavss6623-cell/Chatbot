@@ -610,7 +610,7 @@ class TNEASearch:
             (self.df["district"].str.lower() == str(district).lower().strip())
             & (self.df["branch"] == resolved_branch)
         ].copy()
-        
+
         results = results[results[column].notna()].copy()
 
         # ----------------------------------------------
@@ -791,14 +791,11 @@ class TNEASearch:
         #     ]
         # ].rename(columns={column: "cutoff"})
 
-
-                # ----------------------------------------------
+        # ----------------------------------------------
         # Keep colleges within the student's cutoff
         # ----------------------------------------------
 
-        results = results[
-            results[column] <= cutoff
-        ].copy()
+        results = results[results[column] <= cutoff].copy()
 
         if results.empty:
             return pd.DataFrame(
@@ -837,13 +834,11 @@ class TNEASearch:
         # Return top recommendations
         # ----------------------------------------------
 
-                # ----------------------------------------------
+        # ----------------------------------------------
         # Find exact cutoff matches
         # ----------------------------------------------
 
-        results = results[
-            results[column] == cutoff
-        ].copy()
+        results = results[results[column] == cutoff].copy()
 
         if results.empty:
             return pd.DataFrame(
@@ -874,13 +869,10 @@ class TNEASearch:
                 "district",
                 column,
             ]
-        ].rename(
-            columns={
-                column: "cutoff"
-            }
-        )
-        
+        ].rename(columns={column: "cutoff"})
+
         # ==================================================
+
     # ALTERNATIVE COLLEGES
     # ==================================================
 
@@ -890,34 +882,59 @@ class TNEASearch:
         community,
         branch,
         district,
-        limit=10,
+        limit=5,
+        max_gap=5,
     ):
         """
-        Find alternative colleges in the same district,
-        branch and community when an exact cutoff match
-        is not available.
+        Find the closest alternative colleges when an exact
+        cutoff match is not available.
 
-        Uses 2025 historical cutoff data.
+        Alternatives must have:
+        - same district
+        - same branch
+        - same community
+        - historical cutoff <= student's cutoff
+
+        Results are ranked by the smallest cutoff gap.
         """
+
+        # ----------------------------------------------
+        # Validate cutoff
+        # ----------------------------------------------
 
         try:
             cutoff = float(cutoff)
         except (TypeError, ValueError):
             raise ValueError("Cutoff must be a number.")
 
+        # ----------------------------------------------
+        # Validate community
+        # ----------------------------------------------
+
         community = str(community).upper().strip()
 
         if community not in self.community_map:
-            raise ValueError(
-                "Invalid community. Use OC, BC, BCM, MBC, SC, SCA or ST."
-            )
+            raise ValueError("Invalid community. Use OC, BC, BCM, MBC, SC, SCA or ST.")
 
         column = self.community_map[community]
+
+        # ----------------------------------------------
+        # Resolve branch
+        # ----------------------------------------------
 
         resolved_branch = self.resolve_branch(branch)
 
         if resolved_branch is None:
-            return pd.DataFrame()
+            return pd.DataFrame(
+                columns=[
+                    "college_code",
+                    "college_name",
+                    "branch",
+                    "district",
+                    "cutoff",
+                    "gap",
+                ]
+            )
 
         # ----------------------------------------------
         # Same district + same branch
@@ -929,19 +946,17 @@ class TNEASearch:
         ].copy()
 
         # ----------------------------------------------
-        # Remove missing historical cutoffs
+        # Remove missing cutoffs
         # ----------------------------------------------
 
         results = results[results[column].notna()].copy()
 
         # ----------------------------------------------
-        # Only colleges whose historical cutoff is
-        # at or below the student's cutoff
+        # Only historically achievable colleges
         # ----------------------------------------------
+        # College cutoff must be <= student's cutoff
 
-        results = results[
-            results[column] <= cutoff
-        ].copy()
+        results = results[results[column] <= cutoff].copy()
 
         if results.empty:
             return pd.DataFrame(
@@ -951,19 +966,52 @@ class TNEASearch:
                     "branch",
                     "district",
                     "cutoff",
+                    "gap",
                 ]
             )
 
         # ----------------------------------------------
-        # Closest historical cutoff first
+        # Calculate cutoff gap
+        # ----------------------------------------------
+
+        results["gap"] = cutoff - results[column]
+
+        # ----------------------------------------------
+        # Keep only reasonably close alternatives
+        # ----------------------------------------------
+
+        results = results[results["gap"] <= max_gap].copy()
+
+        if results.empty:
+            return pd.DataFrame(
+                columns=[
+                    "college_code",
+                    "college_name",
+                    "branch",
+                    "district",
+                    "cutoff",
+                    "gap",
+                ]
+            )
+
+        # ----------------------------------------------
+        # Rank by closeness
         # ----------------------------------------------
 
         results = results.sort_values(
-            by=column,
-            ascending=False,
+            by=["gap", column, "college_name"],
+            ascending=[True, False, True],
         )
 
+        # ----------------------------------------------
+        # Limit recommendations
+        # ----------------------------------------------
+
         results = results.head(limit)
+
+        # ----------------------------------------------
+        # Return clean result
+        # ----------------------------------------------
 
         return results[
             [
@@ -972,9 +1020,6 @@ class TNEASearch:
                 "branch",
                 "district",
                 column,
+                "gap",
             ]
-        ].rename(
-            columns={
-                column: "cutoff"
-            }
-        )
+        ].rename(columns={column: "cutoff"})
