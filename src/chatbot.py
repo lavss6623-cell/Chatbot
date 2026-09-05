@@ -49,8 +49,18 @@ class TNEAChatbot:
                 self.pending_intent = None
                 return "Okay. I won't show alternative colleges."
 
-            return (
-                "Please answer yes or no. " "Would you like me to show other colleges?"
+    # If the user provides a new TNEA detail,
+    # treat it as a correction/follow-up instead
+    # of forcing a yes/no answer.
+            parsed_followup = self.parser.parse(message)
+
+            if any(value is not None for value in parsed_followup.values()):
+                self.waiting_for_alternative_confirmation = False
+
+            else:
+                return (
+                "Please answer yes or no. "
+                "Would you like me to show other colleges?"
             )
 
         detected_intent = self.intent_detector.detect(message)
@@ -133,6 +143,7 @@ class TNEAChatbot:
     # ==================================================
 
     def handle_recommendation(self):
+
         self.pending_intent = "recommendation"
 
         missing = self.state.missing_for_recommendation()
@@ -175,8 +186,6 @@ class TNEAChatbot:
 
         self.pending_intent = None
 
-        # Do not reset state. This allows:
-        # "What about ECE?" to reuse cutoff + community.
         return self.format_response(
             cutoff=cutoff,
             community=community,
@@ -225,6 +234,7 @@ class TNEAChatbot:
             community=community,
             branch=resolved_branch,
             recommendations=alternatives,
+            alternative=True,
         )
 
     # ==================================================
@@ -511,9 +521,8 @@ class TNEAChatbot:
         return "\n".join(response)
 
     # ==================================================
-# GENERAL CHAT
-# ==================================================
-
+    # GENERAL CHAT
+    # ==================================================
 
     def handle_general_chat(self, message):
         self.pending_intent = None
@@ -549,12 +558,19 @@ class TNEAChatbot:
         community,
         branch,
         recommendations,
+        alternative=False,
     ):
         response = []
 
-        response.append(
-            f"I found {len(recommendations)} colleges matching your preferences."
-        )
+        if alternative:
+            response.append(
+                f"I found {len(recommendations)} alternative colleges "
+                "based on your cutoff."
+            )
+        else:
+            response.append(
+                f"I found {len(recommendations)} colleges matching your preferences."
+            )
         response.append("")
 
         response.append("Your profile")
@@ -592,9 +608,11 @@ class TNEAChatbot:
             response.append(f"{index}. {college_name}")
 
             response.append(f"   College code: {row['college_code']}")
-            response.append(
-                f"   2025 {community} cutoff: " f"{float(row['cutoff']):.1f}"
-            )
+            response.append(f"   2025 {community} cutoff: {float(row['cutoff']):.1f}")
+
+            if alternative and "gap" in row:
+                response.append(f"   Gap from your cutoff: {float(row['gap']):.1f}")
+
             response.append("")
 
         response.append("----------------")

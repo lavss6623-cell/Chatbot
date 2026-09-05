@@ -15,7 +15,9 @@ def test_complete_cse_recommendation(bot):
 
     assert isinstance(response, str)
     assert "2025" in response
-    assert "colleges you can consider" in response.lower()
+    assert "couldn't find" in response.lower()
+    assert "would you like me to show" in response.lower()
+
     assert bot.state.get("cutoff") == 187.0
     assert bot.state.get("community") == "BC"
     assert bot.state.get("branch") == "cse"
@@ -88,3 +90,56 @@ def test_st_eee_recommendation(bot):
     assert bot.state.get("cutoff") == 185.5
     assert bot.state.get("community") == "ST"
     assert bot.state.get("branch") == "eee"
+    
+def test_alternative_confirmation_yes():
+    bot = TNEAChatbot()
+
+    response = bot.process_message(
+        "I want CSE with cutoff 187 BC in Coimbatore"
+    )
+
+    assert "Would you like me to show" in response
+
+    response = bot.process_message("yes")
+
+    assert "alternative colleges" in response.lower()
+    assert "Karpagam Institute of Technology" in response
+    assert "Sri Ramakrishna Engineering College" in response
+    assert "Gap from your cutoff: 3.5" in response
+
+
+def test_alternative_confirmation_no():
+    bot = TNEAChatbot()
+
+    bot.process_message(
+        "I want CSE with cutoff 187 BC in Coimbatore"
+    )
+
+    response = bot.process_message("no")
+
+    assert response == "Okay. I won't show alternative colleges."
+
+
+def test_alternative_confirmation_invalid():
+    bot = TNEAChatbot()
+
+    bot.process_message(
+        "I want CSE with cutoff 187 BC in Coimbatore"
+    )
+
+    response = bot.process_message("maybe")
+
+    assert "Please answer yes or no" in response
+
+
+def test_alternative_state_is_preserved():
+    bot = TNEAChatbot()
+
+    bot.process_message(
+        "I want CSE with cutoff 187 BC in Coimbatore"
+    )
+
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("branch") == "cse"
+    assert bot.state.get("district") == "Coimbatore"
