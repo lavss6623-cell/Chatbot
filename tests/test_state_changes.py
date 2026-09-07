@@ -53,3 +53,26 @@ def test_state_changes_across_conversation():
     assert bot.state.get("branch") == "ece"
     assert bot.state.get("cutoff") == 187.0
     assert bot.state.get("community") == "MBC"
+    
+def test_reset_clears_conversation_state():
+    bot = TNEAChatbot()
+
+    # First conversation
+    bot.process_message(
+        "187 BC CSE Coimbatore"
+    )
+
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("branch") == "cse"
+    assert bot.state.get("district") == "Coimbatore"
+
+    # Reset conversation
+    bot.reset()
+
+    # All counselling state should be cleared
+    assert bot.state.get("cutoff") is None
+    assert bot.state.get("community") is None
+    assert bot.state.get("branch") is None
+    assert bot.state.get("district") is None
+    assert bot.state.get("college") is None

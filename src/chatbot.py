@@ -1,4 +1,7 @@
-from email.mime import message
+# from email.mime import message
+# from urllib import response
+
+from itertools import count
 from urllib import response
 
 from src.tnea_search import TNEASearch
@@ -49,9 +52,9 @@ class TNEAChatbot:
                 self.pending_intent = None
                 return "Okay. I won't show alternative colleges."
 
-    # If the user provides a new TNEA detail,
-    # treat it as a correction/follow-up instead
-    # of forcing a yes/no answer.
+            # If the user provides a new TNEA detail,
+            # treat it as a correction/follow-up instead
+            # of forcing a yes/no answer.
             parsed_followup = self.parser.parse(message)
 
             if any(value is not None for value in parsed_followup.values()):
@@ -59,9 +62,9 @@ class TNEAChatbot:
 
             else:
                 return (
-                "Please answer yes or no. "
-                "Would you like me to show other colleges?"
-            )
+                    "Please answer yes or no. "
+                    "Would you like me to show other colleges?"
+                )
 
         detected_intent = self.intent_detector.detect(message)
         parsed = self.parser.parse(message)
@@ -560,18 +563,17 @@ class TNEAChatbot:
         recommendations,
         alternative=False,
     ):
+        count = len(recommendations)
         response = []
 
         if alternative:
             response.append(
-                f"I found {len(recommendations)} alternative colleges "
-                "based on your cutoff."
+                f"I found {count} alternative colleges based on your cutoff."
             )
+        elif count == 1:
+            response.append("I found 1 college matching your requirements:")
         else:
-            response.append(
-                f"I found {len(recommendations)} colleges matching your preferences."
-            )
-        response.append("")
+            response.append(f"I found {count} colleges matching your requirements:")
 
         response.append("Your profile")
         response.append("----------------")

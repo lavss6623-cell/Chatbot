@@ -42,6 +42,9 @@ def clean_dataset():
         "SCA": "sca",
         "ST": "st"
     })
+    
+    # Clean column names
+    df.columns = df.columns.astype(str).str.strip()
 
     # Clean text columns
     text_columns = [
