@@ -124,3 +124,28 @@ def test_district_correction():
     assert bot.state.get("community") == "BC"
     assert bot.state.get("branch") == "cse"
     assert bot.state.get("district") == "Chennai"
+    
+def test_multiturn_combined_followup():
+    bot = TNEAChatbot()
+
+    # Turn 1
+    bot.process_message("CSE")
+
+    assert bot.state.get("branch") == "cse"
+
+    # Turn 2: provide multiple missing fields
+    bot.process_message("187 BC")
+
+    assert bot.state.get("branch") == "cse"
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("community") == "BC"
+
+    # Turn 3
+    response = bot.process_message("Coimbatore")
+
+    assert bot.state.get("branch") == "cse"
+    assert bot.state.get("cutoff") == 187.0
+    assert bot.state.get("community") == "BC"
+    assert bot.state.get("district") == "Coimbatore"
+
+    assert "2025" in response
