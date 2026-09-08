@@ -127,13 +127,12 @@ class TNEAChatbot:
 
         if intent == "recommendation":
             return self.handle_recommendation()
-
+        elif intent == "college_cutoff_lookup":
+            return self.handle_college_cutoff_lookup()
         elif intent == "cutoff_lookup":
             return self.handle_cutoff_lookup(parsed)
-
         elif intent == "branch_search":
             return self.handle_branch_search()
-
         elif intent == "college_search":
             return self.handle_college_search(message)
         elif intent == "district_search":
@@ -269,6 +268,169 @@ class TNEAChatbot:
             )
 
         return "I need some more information to help you."
+    
+        # ==================================================
+    # COLLEGE-SPECIFIC CUTOFF LOOKUP
+    # ==================================================
+
+    def handle_college_cutoff_lookup(self):
+
+        college = self.state.get("college")
+        college_code = self.state.get("college_code")
+        branch = self.state.get("branch")
+        community = self.state.get("community")
+
+        # --------------------------------------------------
+        # Need college
+        # --------------------------------------------------
+
+        if not college and not college_code:
+            self.pending_intent = "college_cutoff_lookup"
+            return "Which college would you like the cutoff for?"
+
+        # --------------------------------------------------
+        # Need branch
+        # --------------------------------------------------
+
+        if not branch:
+            self.pending_intent = "college_cutoff_lookup"
+            return (
+                "Which branch would you like the cutoff for?\n\n"
+                "For example: CSE, ECE, EEE, IT, Mechanical or Civil."
+            )
+
+        # --------------------------------------------------
+        # Need community
+        # --------------------------------------------------
+
+        if not community:
+            self.pending_intent = "college_cutoff_lookup"
+            return (
+                "Which community cutoff would you like?\n\n"
+                "Available categories:\n"
+                "• OC\n"
+                "• BC\n"
+                "• BCM\n"
+                "• MBC\n"
+                "• SC\n"
+                "• SCA\n"
+                "• ST"
+            )
+
+        # --------------------------------------------------
+        # Resolve branch
+        # --------------------------------------------------
+
+        resolved_branch = self.search.resolve_branch(branch)
+
+        if resolved_branch is None:
+            self.pending_intent = "college_cutoff_lookup"
+
+            return (
+                f"I couldn't identify the branch '{branch}'.\n\n"
+                "Try CSE, ECE, EEE, IT, Mechanical or Civil."
+            )
+
+        # --------------------------------------------------
+        # Resolve community
+        # --------------------------------------------------
+
+        community = community.upper().strip()
+
+        cutoff_column = self.search.community_map.get(community)
+
+        if cutoff_column is None:
+            self.pending_intent = "college_cutoff_lookup"
+
+            return (
+                "I couldn't recognize that community.\n\n"
+                "Use OC, BC, BCM, MBC, SC, SCA or ST."
+            )
+
+        # --------------------------------------------------
+        # Find college
+        # --------------------------------------------------
+
+        if college_code:
+
+            results = self.search.get_college_by_code(college_code)
+
+        else:
+
+            results = self.search.search_college(college)
+
+        if results.empty:
+            self.pending_intent = None
+
+            return "I couldn't find that college in the 2025 TNEA dataset."
+
+        # --------------------------------------------------
+        # Filter the college by branch
+        # --------------------------------------------------
+
+        results = results[
+            results["branch"] == resolved_branch
+        ].copy()
+
+        if results.empty:
+            self.pending_intent = None
+
+            return (
+                f"I found the college, but {resolved_branch} "
+                "was not found for that college in the 2025 dataset."
+            )
+
+        # --------------------------------------------------
+        # Get community cutoff
+        # --------------------------------------------------
+
+        results = results[
+            results[cutoff_column].notna()
+        ].copy()
+
+        if results.empty:
+            self.pending_intent = None
+
+            return (
+                f"I couldn't find a 2025 {community} cutoff for "
+                f"{resolved_branch} at this college."
+            )
+
+        # --------------------------------------------------
+        # Display result
+        # --------------------------------------------------
+
+        row = results.iloc[0]
+
+        college_name = str(row["college_name"]).strip()
+
+        if "," in college_name:
+            college_name = college_name.split(",")[0].strip()
+
+        college_name = college_name.replace(
+            " (Autonomous)",
+            ""
+        ).strip()
+
+        cutoff = float(row[cutoff_column])
+
+        response = [
+            "TNEA COLLEGE CUTOFF",
+            "================================",
+            "",
+            f"College   : {college_name}",
+            f"Code      : {row['college_code']}",
+            f"Branch    : {resolved_branch}",
+            f"Community : {community}",
+            f"2025 cutoff: {cutoff:.1f}",
+            "",
+            "These results are based on 2025 historical TNEA cutoff data.",
+            "They are not admission guarantees for upcoming counselling."
+        ]
+
+        self.pending_intent = None
+
+        return "\n".join(response)
 
     # ==================================================
     # CUTOFF LOOKUP
