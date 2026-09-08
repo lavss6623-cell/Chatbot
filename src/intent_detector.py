@@ -8,6 +8,30 @@ class TNEAIntentDetector:
         text = text.lower().strip()
 
         # ------------------------------------------
+        # COLLEGE-SPECIFIC CUTOFF LOOKUP
+        # ------------------------------------------
+
+        has_college_reference = any(
+            word in text
+            for word in [
+                "college",
+                "college code",
+                "college name",
+            ]
+        )
+
+        has_cutoff_reference = any(
+            word in text
+            for word in [
+                "cutoff",
+                "cut off",
+            ]
+        )
+
+        if has_college_reference and has_cutoff_reference:
+            return "college_cutoff_lookup"
+
+        # ------------------------------------------
         # CUTOFF LOOKUP
         # ------------------------------------------
 
@@ -17,14 +41,15 @@ class TNEAIntentDetector:
             r"closing.*rank",
             r"closing.*cutoff",
             r"last.*cutoff",
-            r"^\s*cutoff\s*\??\s*$",
+            r"^\s*cutoff\s*$",
         ]
+
         for pattern in cutoff_patterns:
 
             if re.search(pattern, text):
                 return "cutoff_lookup"
-        
-                # ------------------------------------------
+
+        # ------------------------------------------
         # DISTRICT SEARCH
         # ------------------------------------------
 

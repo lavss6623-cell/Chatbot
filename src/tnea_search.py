@@ -342,7 +342,9 @@ class TNEASearch:
         query = college_name.lower().strip()
 
         results = self.df[
-            self.df["college_name"].str.lower().str.contains(query, na=False)
+            self.df["college_name"]
+            .str.lower()
+            .str.contains(query, na=False, regex=False)
         ]
 
         return results[["college_code", "college_name"]].drop_duplicates()
